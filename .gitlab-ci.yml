@@ -1,0 +1,22 @@
+stages:
+  - sync
+
+sync_to_github:
+  stage: sync
+  image:
+    name: shreyasbhat0/copybara
+    entrypoint:
+      - ""
+  script:
+    - apt update && apt install openssh-client -y
+    - mkdir ~/.ssh
+    - cp $SSH_KEY ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts
+    - ssh-keyscan gitlab.anthaathi.net >> ~/.ssh/known_hosts
+    - git config core.sshCommand "ssh -i $SSH_KEY"
+    - git config --global user.name "Madari Developers"
+    - git config --global user.email "developers@madari.media"
+    - copybara copy.bara.sky --force
+  only:
+    - main

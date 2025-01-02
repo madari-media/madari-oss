@@ -1,0 +1,351 @@
+PODS:
+  - audio_session (0.0.1):
+    - Flutter
+  - background_downloader (0.0.1):
+    - Flutter
+  - DKImagePickerController/Core (4.3.9):
+    - DKImagePickerController/ImageDataManager
+    - DKImagePickerController/Resource
+  - DKImagePickerController/ImageDataManager (4.3.9)
+  - DKImagePickerController/PhotoGallery (4.3.9):
+    - DKImagePickerController/Core
+    - DKPhotoGallery
+  - DKImagePickerController/Resource (4.3.9)
+  - DKPhotoGallery (0.0.19):
+    - DKPhotoGallery/Core (= 0.0.19)
+    - DKPhotoGallery/Model (= 0.0.19)
+    - DKPhotoGallery/Preview (= 0.0.19)
+    - DKPhotoGallery/Resource (= 0.0.19)
+    - SDWebImage
+    - SwiftyGif
+  - DKPhotoGallery/Core (0.0.19):
+    - DKPhotoGallery/Model
+    - DKPhotoGallery/Preview
+    - SDWebImage
+    - SwiftyGif
+  - DKPhotoGallery/Model (0.0.19):
+    - SDWebImage
+    - SwiftyGif
+  - DKPhotoGallery/Preview (0.0.19):
+    - DKPhotoGallery/Model
+    - DKPhotoGallery/Resource
+    - SDWebImage
+    - SwiftyGif
+  - DKPhotoGallery/Resource (0.0.19):
+    - SDWebImage
+    - SwiftyGif
+  - file_picker (0.0.1):
+    - DKImagePickerController/PhotoGallery
+    - Flutter
+  - Flutter (1.0.0)
+  - flutter_inappwebview_ios (0.0.1):
+    - Flutter
+    - flutter_inappwebview_ios/Core (= 0.0.1)
+    - OrderedSet (~> 6.0.3)
+  - flutter_inappwebview_ios/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 6.0.3)
+  - google_mlkit_commons (0.9.0):
+    - Flutter
+    - MLKitVision
+  - google_mlkit_text_recognition (0.14.0):
+    - Flutter
+    - google_mlkit_commons
+    - GoogleMLKit/TextRecognition (~> 7.0.0)
+  - GoogleDataTransport (10.1.0):
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
+  - GoogleMLKit/MLKitCore (7.0.0):
+    - MLKitCommon (~> 12.0.0)
+  - GoogleMLKit/TextRecognition (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitTextRecognition (~> 5.0.0)
+  - GoogleMLKit/TextRecognitionChinese (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitTextRecognitionChinese (~> 4.0.0)
+  - GoogleMLKit/TextRecognitionDevanagari (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitTextRecognitionDevanagari (~> 4.0.0)
+  - GoogleMLKit/TextRecognitionJapanese (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitTextRecognitionJapanese (~> 4.0.0)
+  - GoogleMLKit/TextRecognitionKorean (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitTextRecognitionKorean (~> 4.0.0)
+  - GoogleToolboxForMac/Defines (4.2.1)
+  - GoogleToolboxForMac/Logger (4.2.1):
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - "GoogleToolboxForMac/NSData+zlib (4.2.1)":
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - GoogleUtilities/Environment (8.0.2):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.0.2):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.0.2)
+  - GoogleUtilities/UserDefaults (8.0.2):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GTMSessionFetcher/Core (3.5.0)
+  - image_picker_ios (0.0.1):
+    - Flutter
+  - just_audio (0.0.1):
+    - Flutter
+  - media_kit_libs_ios_video (1.0.4):
+    - Flutter
+  - media_kit_native_event_loop (1.0.0):
+    - Flutter
+  - media_kit_video (0.0.1):
+    - Flutter
+  - MLImage (1.0.0-beta6)
+  - MLKitCommon (12.0.0):
+    - GoogleDataTransport (~> 10.0)
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GoogleUtilities/Logger (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+  - MLKitTextRecognition (5.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitTextRecognitionCommon (= 4.0.0)
+    - MLKitVision (~> 8.0)
+  - MLKitTextRecognitionChinese (4.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitTextRecognitionCommon (= 4.0.0)
+    - MLKitVision (~> 8.0)
+  - MLKitTextRecognitionCommon (4.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitVision (~> 8.0)
+  - MLKitTextRecognitionDevanagari (4.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitTextRecognitionCommon (= 4.0.0)
+    - MLKitVision (~> 8.0)
+  - MLKitTextRecognitionJapanese (4.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitTextRecognitionCommon (= 4.0.0)
+    - MLKitVision (~> 8.0)
+  - MLKitTextRecognitionKorean (4.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitTextRecognitionCommon (= 4.0.0)
+    - MLKitVision (~> 8.0)
+  - MLKitVision (8.0.0):
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+    - MLImage (= 1.0.0-beta6)
+    - MLKitCommon (~> 12.0)
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - OrderedSet (6.0.3)
+  - package_info_plus (0.4.5):
+    - Flutter
+  - path_provider_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - pdfrx (0.0.3):
+    - Flutter
+    - FlutterMacOS
+  - PromisesObjC (2.4.0)
+  - screen_brightness_ios (0.1.0):
+    - Flutter
+  - SDWebImage (5.20.0):
+    - SDWebImage/Core (= 5.20.0)
+  - SDWebImage/Core (5.20.0)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - sqlite3 (3.47.1):
+    - sqlite3/common (= 3.47.1)
+  - sqlite3/common (3.47.1)
+  - sqlite3/dbstatvtab (3.47.1):
+    - sqlite3/common
+  - sqlite3/fts5 (3.47.1):
+    - sqlite3/common
+  - sqlite3/perf-threadsafe (3.47.1):
+    - sqlite3/common
+  - sqlite3/rtree (3.47.1):
+    - sqlite3/common
+  - sqlite3_flutter_libs (0.0.1):
+    - Flutter
+    - FlutterMacOS
+    - sqlite3 (~> 3.47.1)
+    - sqlite3/dbstatvtab
+    - sqlite3/fts5
+    - sqlite3/perf-threadsafe
+    - sqlite3/rtree
+  - SwiftyGif (5.4.5)
+  - url_launcher_ios (0.0.1):
+    - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - volume_controller (0.0.1):
+    - Flutter
+  - wakelock_plus (0.0.1):
+    - Flutter
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - audio_session (from `.symlinks/plugins/audio_session/ios`)
+  - background_downloader (from `.symlinks/plugins/background_downloader/ios`)
+  - file_picker (from `.symlinks/plugins/file_picker/ios`)
+  - Flutter (from `Flutter`)
+  - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
+  - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
+  - google_mlkit_text_recognition (from `.symlinks/plugins/google_mlkit_text_recognition/ios`)
+  - GoogleMLKit/TextRecognitionChinese (~> 7.0.0)
+  - GoogleMLKit/TextRecognitionDevanagari (~> 7.0.0)
+  - GoogleMLKit/TextRecognitionJapanese (~> 7.0.0)
+  - GoogleMLKit/TextRecognitionKorean (~> 7.0.0)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - just_audio (from `.symlinks/plugins/just_audio/ios`)
+  - media_kit_libs_ios_video (from `.symlinks/plugins/media_kit_libs_ios_video/ios`)
+  - media_kit_native_event_loop (from `.symlinks/plugins/media_kit_native_event_loop/ios`)
+  - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - pdfrx (from `.symlinks/plugins/pdfrx/darwin`)
+  - screen_brightness_ios (from `.symlinks/plugins/screen_brightness_ios/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
+  - volume_controller (from `.symlinks/plugins/volume_controller/ios`)
+  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - DKImagePickerController
+    - DKPhotoGallery
+    - GoogleDataTransport
+    - GoogleMLKit
+    - GoogleToolboxForMac
+    - GoogleUtilities
+    - GTMSessionFetcher
+    - MLImage
+    - MLKitCommon
+    - MLKitTextRecognition
+    - MLKitTextRecognitionChinese
+    - MLKitTextRecognitionCommon
+    - MLKitTextRecognitionDevanagari
+    - MLKitTextRecognitionJapanese
+    - MLKitTextRecognitionKorean
+    - MLKitVision
+    - nanopb
+    - OrderedSet
+    - PromisesObjC
+    - SDWebImage
+    - sqlite3
+    - SwiftyGif
+
+EXTERNAL SOURCES:
+  audio_session:
+    :path: ".symlinks/plugins/audio_session/ios"
+  background_downloader:
+    :path: ".symlinks/plugins/background_downloader/ios"
+  file_picker:
+    :path: ".symlinks/plugins/file_picker/ios"
+  Flutter:
+    :path: Flutter
+  flutter_inappwebview_ios:
+    :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
+  google_mlkit_commons:
+    :path: ".symlinks/plugins/google_mlkit_commons/ios"
+  google_mlkit_text_recognition:
+    :path: ".symlinks/plugins/google_mlkit_text_recognition/ios"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
+  just_audio:
+    :path: ".symlinks/plugins/just_audio/ios"
+  media_kit_libs_ios_video:
+    :path: ".symlinks/plugins/media_kit_libs_ios_video/ios"
+  media_kit_native_event_loop:
+    :path: ".symlinks/plugins/media_kit_native_event_loop/ios"
+  media_kit_video:
+    :path: ".symlinks/plugins/media_kit_video/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
+  path_provider_foundation:
+    :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  pdfrx:
+    :path: ".symlinks/plugins/pdfrx/darwin"
+  screen_brightness_ios:
+    :path: ".symlinks/plugins/screen_brightness_ios/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sqflite_darwin:
+    :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  sqlite3_flutter_libs:
+    :path: ".symlinks/plugins/sqlite3_flutter_libs/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
+  volume_controller:
+    :path: ".symlinks/plugins/volume_controller/ios"
+  wakelock_plus:
+    :path: ".symlinks/plugins/wakelock_plus/ios"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
+
+SPEC CHECKSUMS:
+  audio_session: 088d2483ebd1dc43f51d253d4a1c517d9a2e7207
+  background_downloader: 9f788ffc5de45acf87d6380e91ca0841066c18cf
+  DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
+  DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
+  file_picker: 09aa5ec1ab24135ccd7a1621c46c84134bfd6655
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
+  google_mlkit_commons: 384e4e206e122b6dad430d3158205e0b2fac6789
+  google_mlkit_text_recognition: e540f2aff997f2b0daaa1b4fd5ead3b0b7030adc
+  GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
+  GoogleMLKit: eff9e23ec1d90ea4157a1ee2e32a4f610c5b3318
+  GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
+  GoogleUtilities: 26a3abef001b6533cf678d3eb38fd3f614b7872d
+  GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
+  just_audio: baa7252489dbcf47a4c7cc9ca663e9661c99aafa
+  media_kit_libs_ios_video: a5fe24bc7875ccd6378a0978c13185e1344651c1
+  media_kit_native_event_loop: e6b2ab20cf0746eb1c33be961fcf79667304fa2a
+  media_kit_video: 5da63f157170e5bf303bf85453b7ef6971218a2e
+  MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
+  MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
+  MLKitTextRecognition: 3b41f3ff084a79afb214408d25d2068d77ab322c
+  MLKitTextRecognitionChinese: a7e2d3e54d8be80091f7064741c54e2298a9d498
+  MLKitTextRecognitionCommon: cd44577a8c506fc6bba065096de03bec0d01a213
+  MLKitTextRecognitionDevanagari: b7a59a5e337ccb669eae82a503aa8e9287ba0c58
+  MLKitTextRecognitionJapanese: 4a62c24ecf1cbaeccc8a235c81c0ba397807d7d8
+  MLKitTextRecognitionKorean: b86e13e4a648efc7727d3261ddbf8afbf467c5c1
+  MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
+  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
+  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  pdfrx: 07fc287c47ea8d027c4ed56457f8a1aa74d73594
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  screen_brightness_ios: 715ca807df953bf676d339f11464e438143ee625
+  SDWebImage: 73c6079366fea25fa4bb9640d5fb58f0893facd8
+  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
+  sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  sqlite3: 1e522f0938463e44b7faf50393b40bdc1e1e456d
+  sqlite3_flutter_libs: 1b4e98da20ebd4e9b1240269b78cdcf492dbe9f3
+  SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
+  url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
+  video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
+  volume_controller: 531ddf792994285c9b17f9d8a7e4dcdd29b3eae9
+  wakelock_plus: 78ec7c5b202cab7761af8e2b2b3d0671be6c4ae1
+  webview_flutter_wkwebview: 0982481e3d9c78fd5c6f62a002fcd24fc791f1e4
+
+PODFILE CHECKSUM: b02c94e3a8abdba64191e66ef2b4faf4842a32c2
+
+COCOAPODS: 1.16.2

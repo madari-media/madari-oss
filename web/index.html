@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Madari Media Manager.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Madari">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>Madari</title>
+  <link rel="manifest" href="manifest.json">
+  <script type="application/javascript" src="/assets/packages/flutter_inappwebview_web/assets/web/web_support.js" defer></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #1A1A1A; /* Deep dark gray */
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    .loader-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #F1F1F1;
+      text-align: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    .loader {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(241,241,241,0.2);
+      border-top: 4px solid #F1F1F1;
+      border-radius: 50%;
+      animation: windows-spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    .loading-text {
+      color: #F1F1F1;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+
+    .progress-bar {
+      width: 200px;
+      height: 4px;
+      background-color: rgba(241,241,241,0.1);
+      margin-top: 20px;
+      overflow: hidden;
+      position: relative;
+      border-radius: 2px;
+    }
+
+    .progress-bar-fill {
+      width: 50%;
+      height: 100%;
+      background-color: #2C9AFF; /* Bright blue accent */
+      position: absolute;
+      animation: loading-bar 1.5s ease-in-out infinite;
+      border-radius: 2px;
+    }
+
+    @keyframes windows-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes loading-bar {
+      0% { left: -50%; }
+      50% { left: 100%; }
+      100% { left: 250%; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="loader-container">
+  <div class="loader"></div>
+  <div class="loading-text">Initializing App...</div>
+  <div class="progress-bar">
+    <div class="progress-bar-fill"></div>
+  </div>
+</div>
+<script>
+  (()=>{
+    {{flutter_js}}
+    {{flutter_build_config}}
+  })();
+
+  const loading = document.querySelector('.loading-text');
+  loading.textContent = "Loading Entrypoint...";
+
+  _flutter.loader.load({
+    onEntrypointLoaded: async function(engineInitializer) {
+      loading.textContent = "Initializing engine...";
+      const appRunner = await engineInitializer.initializeEngine();
+
+      loading.textContent = "Running app...";
+      await appRunner.runApp();
+    }
+  });
+</script>
+</body>
+</html>

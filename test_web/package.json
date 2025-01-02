@@ -1,0 +1,8 @@
+{
+  "name": "test_web",
+  "packageManager": "yarn@4.5.3",
+  "type": "module",
+  "dependencies": {
+    "puppeteer": "10.0.0"
+  }
+}

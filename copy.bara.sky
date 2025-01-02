@@ -1,0 +1,13 @@
+core.workflow(
+    name = "default",
+    origin = git.origin(
+      url = 'git@gitlab.anthaathi.net:madari-media/madari.git',
+      ref = "main",
+    ),
+    destination = git.destination(
+      url = 'git@github.com:madari-media/madari-oss.git',
+      push = "main",
+      fetch = "main",
+    ),
+    authoring = authoring.pass_thru("Madari Developers <developers@madari.media>"),
+)
