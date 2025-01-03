@@ -182,7 +182,7 @@ class _RenderStreamListState extends State<RenderStreamList> {
     return StreamBuilder(
       stream: _stream,
       builder: (BuildContext context, snapshot) {
-        if (snapshot.hasError) {
+        if (snapshot.hasError && (snapshot.data?.isEmpty ?? true) == true) {
           print(snapshot.error);
           print(snapshot.stackTrace);
           return Text("Error: ${snapshot.error}");
