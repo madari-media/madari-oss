@@ -1,8 +1,10 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/connections/types/base/base.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../utils/grid.dart';
@@ -43,8 +45,35 @@ class _RenderLibraryListState extends State<RenderLibraryList> {
         }
 
         if (state.status == QueryStatus.error) {
-          return Center(
-            child: Text("Something went wrong ${state.error}"),
+          final errorMessage = (
+            state.error is ClientException
+                ? (state.error as ClientException).response["message"]
+                : "",
+          );
+
+          return SizedBox(
+            height: _getListHeight(context),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                color: Colors.black45,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 16,
+                  ),
+                  child: Center(
+                    child: Text(
+                      "Something went wrong while loading library\n${errorMessage.$1}",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.exo2().copyWith(
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           );
         }
 

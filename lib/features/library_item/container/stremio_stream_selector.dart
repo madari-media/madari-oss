@@ -223,6 +223,8 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
 
   @override
   Widget build(BuildContext context) {
+    print("Neo");
+
     return StreamBuilder(
       stream: _stream,
       builder: (context, snapshot) {

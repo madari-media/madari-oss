@@ -194,7 +194,8 @@ class _RenderStreamListState extends State<RenderStreamList> {
           );
         }
 
-        if (snapshot.data?.isEmpty == true) {
+        if (snapshot.data?.isEmpty == true &&
+            snapshot.connectionState == ConnectionState.done) {
           return Center(
             child: Text(
               "No stream found",

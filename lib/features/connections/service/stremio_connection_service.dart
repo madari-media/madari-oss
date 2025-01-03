@@ -262,7 +262,7 @@ class StremioConnectionService extends BaseConnectionService {
               .toList(),
         );
 
-        yield streams;
+        if (streams.isNotEmpty) yield streams;
       }
     }
 
