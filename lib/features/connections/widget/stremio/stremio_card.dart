@@ -49,7 +49,7 @@ class StremioCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         image: DecorationImage(
                           image: CachedNetworkImageProvider(
-                            "https://proxy-image.syncws.com/insecure/plain/${meta.poster}@webp",
+                            "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(meta.poster!)}@webp",
                             imageRenderMethodForWeb:
                                 ImageRenderMethodForWeb.HttpGet,
                           ),
