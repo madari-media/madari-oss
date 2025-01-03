@@ -49,6 +49,11 @@ jobs:
           flutter-version: '3.27.1'
           channel: 'stable'
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       - name: Install dependencies
         run: flutter pub get
 
