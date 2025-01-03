@@ -71,7 +71,7 @@ jobs:
 
       - name: Decode and save keystore file
         run: |
-          echo "${{ secrets.STORE_FILE_BASE64 }}" | base64 --decode > android/key.jks
+          echo "${{ secrets.STORE_FILE_BASE64 }}" | base64 --decode > android/app/key.jks
 
       - name: Build Android
         run: make build_android
