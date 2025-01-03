@@ -8,7 +8,8 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows]
+
     environment: prod
     steps:
       - uses: actions/checkout@v3
@@ -37,7 +38,7 @@ jobs:
           path: build/windows/x64/runner/Release/
 
   build-android:
-    runs-on: linux-latest
+    runs-on: [self-hosted, Linux]
     environment: prod
     steps:
       - uses: actions/checkout@v3
