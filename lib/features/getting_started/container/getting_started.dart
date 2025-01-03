@@ -7,10 +7,12 @@ import 'create_connection.dart';
 
 class GettingStartedScreen extends StatefulWidget {
   final VoidCallback onCallback;
+  final bool hasBackground;
 
   const GettingStartedScreen({
     super.key,
     required this.onCallback,
+    this.hasBackground = true,
   });
 
   @override
@@ -27,8 +29,8 @@ class _GettingStartedScreenState extends State<GettingStartedScreen>
   late final List<OnboardingStep> steps = [
     OnboardingStep(
       key: 'create_connection',
-      title: 'Create Connection',
-      description: 'Connect your database securely with just a few clicks',
+      title: 'Setup Connection',
+      description: 'Configure your Stremio addons',
       icon: Icons.link_rounded,
       gradientColors: [Colors.purple.shade800, Colors.blue.shade900],
     ),
@@ -81,16 +83,17 @@ class _GettingStartedScreenState extends State<GettingStartedScreen>
 
     return Stack(
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: steps[_currentPage].gradientColors,
+        if (widget.hasBackground)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: steps[_currentPage].gradientColors,
+              ),
             ),
           ),
-        ),
         // Content
         Center(
           child: ConstrainedBox(

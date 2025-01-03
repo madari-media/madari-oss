@@ -295,6 +295,10 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                     itemCount: _addons.length,
                     itemBuilder: (context, index) {
                       final addon = _addons[index];
+                      final name = utf8.decode(
+                        (addon['name'] ?? 'Unknown Addon').runes.toList(),
+                      );
+
                       return Card(
                         margin: EdgeInsets.only(
                           bottom: index + 1 != _addons.length ? 10 : 0,
@@ -309,7 +313,10 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                                       const Icon(Icons.extension),
                                 )
                               : const Icon(Icons.extension, size: 40),
-                          title: Text(addon['name'] ?? 'Unknown Addon'),
+                          title: Text(
+                            name,
+                            maxLines: 1,
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

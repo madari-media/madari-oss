@@ -1,10 +1,9 @@
-name: Build and Deploy
+name: Create Release on Tag
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
 
 jobs:
   build-windows:
@@ -23,7 +22,7 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          touch .env
+          echo "API_KEY=${{ secrets.API_KEY }}" > .env
 
       - name: Build Windows
         run: make build_windows
@@ -48,14 +47,14 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '11'
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Set up environment variables
         run: |
-          touch .env
+          echo "API_KEY=${{ secrets.API_KEY }}" > .env
 
       - name: Create key.properties file
         run: |
@@ -92,7 +91,7 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          touch .env
+          echo "API_KEY=${{ secrets.API_KEY }}" > .env
 
       - name: Build iOS
         run: flutter build ios --release
@@ -123,7 +122,7 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          touch .env
+          echo "API_KEY=${{ secrets.API_KEY }}" > .env
 
       - name: Build Linux
         run: flutter build linux
@@ -149,7 +148,7 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          touch .env
+          echo "API_KEY=${{ secrets.API_KEY }}" > .env
 
       - name: Build MacOS
         run: flutter build macos
@@ -159,3 +158,98 @@ jobs:
         with:
           name: macos-build
           path: build/macos/Build/Products/Release/Madari.app
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-android, build_ipa, build_linux, build_macos]
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts/windows
+
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-build
+          path: artifacts/android
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-build
+          path: artifacts/ios
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/linux
+
+      - name: Download MacOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: artifacts/macos
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Windows artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/windows/your-windows-build-file.exe
+          asset_name: your-windows-build-file.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload Android artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/android/app-release.apk
+          asset_name: app-release.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload iOS artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/ios/Runner.app
+          asset_name: Runner.app
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/linux/your-linux-build-file
+          asset_name: your-linux-build-file
+          asset_content_type: application/octet-stream
+
+      - name: Upload MacOS artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/macos/Madari.app
+          asset_name: Madari.app
+          asset_content_type: application/octet-stream

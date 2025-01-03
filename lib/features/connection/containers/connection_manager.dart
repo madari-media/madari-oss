@@ -161,11 +161,6 @@ class _ConnectionManagerState extends State<ConnectionManager> {
       appBar: AppBar(
         title: Text("Connection ${widget.item.title}"),
         actions: [
-          TextButton.icon(
-            onPressed: () {},
-            label: const Text("Settings"),
-            icon: const Icon(Icons.settings),
-          ),
           const SizedBox(width: 6),
           ElevatedButton.icon(
             onPressed: _isDragging || _isLoading

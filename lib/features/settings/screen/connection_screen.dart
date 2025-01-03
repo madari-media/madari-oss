@@ -1,11 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:madari_client/features/connection/containers/connection_manager.dart';
-import 'package:madari_client/features/connection/containers/create_new_connection.dart';
-import 'package:madari_client/features/connection/containers/show_handle_connection_type.dart';
+import 'package:madari_client/features/getting_started/container/getting_started.dart';
 import 'package:madari_client/features/library/containers/connection_list.dart';
-import 'package:madari_client/features/library/screen/create_new_library.dart';
 
 import '../../../engine/connection.dart';
 
@@ -35,46 +32,16 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                 isScrollControlled: true,
                 isDismissible: true,
                 builder: (context) {
-                  return CreateNewConnection(
-                    onCallback: (item) {
-                      Navigator.of(context).pop();
-
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        isDismissible: true,
-                        builder: (context) {
-                          return Scaffold(
-                            body: ShowHandleConnectionType(
-                              item: item,
-                              onFinish: (item) async {
-                                Navigator.of(context).pop();
-                                ref.refresh(getConnectionsProvider);
-
-                                if (context.mounted) {
-                                  showCupertinoModalPopup(
-                                    context: context,
-                                    builder: (ctx) {
-                                      onCreated() {
-                                        Navigator.of(ctx).pop();
-                                      }
-
-                                      return CreateNewLibrary(
-                                        onCreatedAnother: () {},
-                                        item: item,
-                                        onCreated: () {
-                                          onCreated();
-                                        },
-                                      );
-                                    },
-                                  );
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                      top: 18.0,
+                    ),
+                    child: GettingStartedScreen(
+                      onCallback: () {
+                        ref.refresh(getConnectionsProvider);
+                      },
+                      hasBackground: false,
+                    ),
                   );
                 },
               );

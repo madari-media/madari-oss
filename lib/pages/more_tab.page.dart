@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/watch_history/service/zeee_watch_history.dart';
-import 'package:madari_client/pages/getting_started.page.dart';
 import 'package:madari_client/pages/sign_in.page.dart';
 
 import '../features/settings/screen/account_screen.dart';
+import '../features/settings/screen/connection_screen.dart';
 import '../features/settings/screen/playback_settings_screen.dart';
 import '../features/settings/screen/profile_button.dart';
 
@@ -46,15 +46,7 @@ class MoreContainer extends StatelessWidget {
               subtitle: 'Manage your connected accounts',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => Scaffold(
-                    appBar: AppBar(),
-                    body: const Padding(
-                      padding: EdgeInsets.only(
-                        bottom: 24.0,
-                      ),
-                      child: GettingStartedPage(),
-                    ),
-                  ),
+                  builder: (context) => const ConnectionsScreen(),
                 ),
               ),
             ),
