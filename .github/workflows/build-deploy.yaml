@@ -9,14 +9,14 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-
+    environment: prod
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.27.1'
           channel: 'stable'
 
       - name: Install dependencies
@@ -36,16 +36,16 @@ jobs:
           name: windows-build
           path: build/windows/x64/runner/Release/
 
-  build-web-deploy:
-    runs-on: ubuntu-latest
-
+  build-android:
+    runs-on: linux-latest
+    environment: prod
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.27.1'
           channel: 'stable'
 
       - name: Install dependencies
@@ -56,13 +56,22 @@ jobs:
 
       - run: make build
 
-      - name: Build Web
-        run: make build_web
+      - name: Create key.properties file
+        run: |
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=key.jks" >> android/key.properties
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+      - name: Decode and save keystore file
+        run: |
+          echo "${{ secrets.STORE_FILE_BASE64 }}" | base64 --decode > android/key.jks
+
+      - name: Build Android
+        run: make build_android
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: madari-dev
-          directory: build/web
+          name: android-build
+          path: build/app/outputs/flutter-apk/app-release.apk
