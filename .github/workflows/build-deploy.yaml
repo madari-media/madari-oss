@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-windows:
+  build_windows:
     runs-on: windows-latest
     environment: prod
     steps:
@@ -35,7 +35,7 @@ jobs:
           name: windows-build
           path: build/windows/x64/runner/Release/
 
-  build-android:
+  build_android:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -98,7 +98,7 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build iOS
-        run: flutter build ios --release
+        run: flutter build ios --release --no-codesign
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
@@ -119,7 +119,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libmpv-dev mpv
 
       - name: Install dependencies
         run: flutter pub get
@@ -130,7 +130,7 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux
-        run: flutter build linux
+        run: flutter build linux --release
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
