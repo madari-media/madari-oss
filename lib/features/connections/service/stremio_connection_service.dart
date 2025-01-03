@@ -194,73 +194,77 @@ class StremioConnectionService extends BaseConnectionService {
           continue;
         }
 
-        final url =
-            "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
+        try {
+          final url =
+              "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
 
-        final result = await http.get(Uri.parse(url), headers: {});
+          final result = await http.get(Uri.parse(url), headers: {});
 
-        if (result.statusCode == 404) {
+          if (result.statusCode == 404) {
+            continue;
+          }
+
+          final body = StreamResponse.fromJson(jsonDecode(result.body));
+
+          streams.addAll(
+            body.streams
+                .map((item) {
+                  String streamTitle = item.title ?? item.name ?? "No title";
+
+                  try {
+                    streamTitle = utf8.decode(
+                      (item.title ?? item.name ?? "No Title").runes.toList(),
+                    );
+                  } catch (e) {}
+
+                  final streamDescription = item.description != null
+                      ? utf8.decode(
+                          (item.description!).runes.toList(),
+                        )
+                      : null;
+
+                  String title = meta.name ?? item.title ?? "No title";
+
+                  if (season != null) title += " S$season";
+                  if (episode != null) title += " E$episode";
+
+                  DocSource? source;
+
+                  if (item.url != null) {
+                    source = MediaURLSource(
+                      title: title,
+                      url: item.url!,
+                      id: meta.id,
+                    );
+                  }
+
+                  if (item.infoHash != null) {
+                    source = TorrentSource(
+                      title: title,
+                      infoHash: item.infoHash!,
+                      id: meta.id,
+                      fileName: "$title.mp4",
+                      season: season,
+                      episode: episode,
+                    );
+                  }
+
+                  if (source == null) {
+                    return null;
+                  }
+
+                  return StreamList(
+                    title: streamTitle,
+                    description: streamDescription,
+                    source: source,
+                  );
+                })
+                .whereType<StreamList>()
+                .toList(),
+          );
+        } catch (e) {
           continue;
         }
-
-        final body = StreamResponse.fromJson(jsonDecode(result.body));
-
-        streams.addAll(
-          body.streams
-              .map((item) {
-                String streamTitle = item.title ?? item.name ?? "No title";
-
-                try {
-                  streamTitle = utf8.decode(
-                    (item.title ?? item.name ?? "No Title").runes.toList(),
-                  );
-                } catch (e) {}
-
-                final streamDescription = item.description != null
-                    ? utf8.decode(
-                        (item.description!).runes.toList(),
-                      )
-                    : null;
-
-                String title = meta.name ?? item.title ?? "No title";
-
-                if (season != null) title += " S$season";
-                if (episode != null) title += " E$episode";
-
-                DocSource? source;
-
-                if (item.url != null) {
-                  source = MediaURLSource(
-                    title: title,
-                    url: item.url!,
-                    id: meta.id,
-                  );
-                }
-
-                if (item.infoHash != null) {
-                  source = TorrentSource(
-                    title: title,
-                    infoHash: item.infoHash!,
-                    id: meta.id,
-                    fileName: "$title.mp4",
-                    season: season,
-                    episode: episode,
-                  );
-                }
-
-                if (source == null) {
-                  return null;
-                }
-
-                return StreamList(
-                  title: streamTitle,
-                  description: streamDescription,
-                  source: source,
-                );
-              })
-              .whereType<StreamList>()
-              .toList(),
-        );
 
         if (streams.isNotEmpty) yield streams;
       }

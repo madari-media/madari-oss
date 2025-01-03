@@ -21,7 +21,9 @@ class AppDatabase extends _$AppDatabase {
       name: 'madari_db',
       web: DriftWebOptions(
         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-        driftWorker: Uri.parse('assets/assets/drift_worker.dart.js'),
+        driftWorker: Uri.parse(
+          'assets/assets/ignore_this_error_drift_worker.dart.js',
+        ),
       ),
     );
   }

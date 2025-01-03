@@ -7,7 +7,6 @@ import 'package:madari_client/pages/stremio_item.page.dart';
 
 import 'features/connections/types/stremio/stremio_base.types.dart';
 import 'pages/download.page.dart';
-import 'pages/getting_started.page.dart';
 import 'pages/home.page.dart';
 import 'pages/home_tab.page.dart';
 import 'pages/more_tab.page.dart';
@@ -108,15 +107,6 @@ GoRouter createRouter() {
           return Container();
         },
       ),
-      ShellRoute(
-        parentNavigatorKey: rootNavigatorKey,
-        routes: [
-          GoRoute(
-            path: GettingStartedPage.routeName,
-            builder: (context, state) => const GettingStartedPage(),
-          ),
-        ],
-      ),
       GoRoute(
         path: SignInPage.routeName,
         builder: (context, state) => const SignInPage(),
@@ -129,23 +119,19 @@ GoRouter createRouter() {
   );
 }
 
-String? _routeGuard(
-  BuildContext context,
-  GoRouterState state,
-) {
+String? _routeGuard(BuildContext context, GoRouterState state) {
   final isLoggedIn = AppEngine.engine.pb.authStore.isValid;
 
-  final bool isLoggingIn = state.uri.toString() == SignInPage.routeName ||
-      state.uri.toString() == GettingStartedPage.routeName ||
-      state.uri.toString() == SignUpPage.routeName;
+  final publicRoutes = [
+    SignInPage.routeName,
+    SignUpPage.routeName,
+  ];
 
-  if (!isLoggedIn && !isLoggingIn) {
-    return AppEngine.engine.pb.authStore.record?.getStringValue("setup") == ""
-        ? GettingStartedPage.routeName
-        : SignInPage.routeName;
+  if (!isLoggedIn && !publicRoutes.contains(state.uri.path)) {
+    return SignInPage.routeName;
   }
 
-  if (isLoggedIn && isLoggingIn) {
+  if (isLoggedIn && publicRoutes.contains(state.uri.path)) {
     return '/';
   }
 
