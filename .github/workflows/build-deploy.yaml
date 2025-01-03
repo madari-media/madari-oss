@@ -101,11 +101,17 @@ jobs:
       - name: Build iOS
         run: flutter build ios --release --no-codesign
 
+      - name: Pack IPA
+        run: "mkdir build/ios/iphoneos/Payload && mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload"
+
+      - name: Zip Ipa
+        run: "zip -qq -r -9 app.ipa build/ios/iphoneos/Payload"
+
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
-          path: build/ios/iphoneos/Runner.app
+          path: app.ipa
 
   build_linux:
     runs-on: ubuntu-latest
