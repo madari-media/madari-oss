@@ -24,6 +24,7 @@ jobs:
       - name: Set up environment variables
         run: |
           touch .env
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Windows
         run: make build_windows
@@ -56,6 +57,7 @@ jobs:
       - name: Set up environment variables
         run: |
           touch .env
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Create key.properties file
         run: |
@@ -93,6 +95,7 @@ jobs:
       - name: Set up environment variables
         run: |
           touch .env
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build iOS
         run: flutter build ios --release
@@ -124,6 +127,7 @@ jobs:
       - name: Set up environment variables
         run: |
           touch .env
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux
         run: flutter build linux
@@ -150,9 +154,10 @@ jobs:
       - name: Set up environment variables
         run: |
           touch .env
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build MacOS
-        run: flutter build macos
+        run: flutter build macos --release
 
       - name: Upload MacOS artifact
         uses: actions/upload-artifact@v4
