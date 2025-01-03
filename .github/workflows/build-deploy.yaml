@@ -168,8 +168,13 @@ jobs:
       - name: Build MacOS
         run: flutter build macos --release
 
+      - name: Islate the Build
+        run: mkdir build/macos/Build/Products/Release/AppRelease
+
+      - run: mv build/macos/Build/Products/Release/Madari.app build/macos/Build/Products/Release/AppRelease/
+
       - name: Upload MacOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: build/macos/Build/Products/Release
+          path: build/macos/Build/Products/Release/AppRelease
