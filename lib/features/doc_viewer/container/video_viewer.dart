@@ -75,6 +75,7 @@ class _VideoViewerState extends State<VideoViewer> {
       enableHardwareAcceleration: true,
     ),
   );
+
   List<SubtitleTrack> subtitles = [];
   List<AudioTrack> audioTracks = [];
   Map<String, String> languages = {};

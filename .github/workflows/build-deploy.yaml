@@ -202,7 +202,7 @@ jobs:
           destination-dir: nightly/${{ github.run_id }}/linux
 
   build_macos:
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS]
     environment: prod
     steps:
       - uses: actions/checkout@v4
