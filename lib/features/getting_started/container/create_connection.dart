@@ -80,7 +80,11 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
     });
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(
+          url.replaceFirst("stremio://", "https://"),
+        ),
+      );
       if (response.statusCode == 200) {
         final manifest = json.decode(response.body);
 
