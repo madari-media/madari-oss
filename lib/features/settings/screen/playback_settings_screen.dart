@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:madari_client/utils/external_player.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../../../engine/engine.dart';
@@ -22,6 +23,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   double _playbackSpeed = 1.0;
   String _defaultAudioTrack = 'eng';
   String _defaultSubtitleTrack = 'eng';
+  bool _enableExternalPlayer = true;
+  String? _defaultPlayerId;
 
   Map<String, String> _availableLanguages = {};
 
@@ -51,9 +54,14 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     final playbackConfig = getPlaybackConfig();
 
     _autoPlay = playbackConfig.autoPlay ?? true;
-    _playbackSpeed = playbackConfig.playbackSpeed.toDouble() ?? 1.0;
-    _defaultAudioTrack = playbackConfig.defaultAudioTrack ?? 'eng';
-    _defaultSubtitleTrack = playbackConfig.defaultSubtitleTrack ?? 'eng';
+    _playbackSpeed = playbackConfig.playbackSpeed.toDouble();
+    _defaultAudioTrack = playbackConfig.defaultAudioTrack;
+    _defaultSubtitleTrack = playbackConfig.defaultSubtitleTrack;
+    _enableExternalPlayer = playbackConfig.externalPlayer;
+    _defaultPlayerId =
+        playbackConfig.externalPlayerId?.containsKey(currentPlatform) == true
+            ? playbackConfig.externalPlayerId![currentPlatform]
+            : null;
   }
 
   @override
@@ -77,6 +85,10 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
 
       final currentConfig = user.data['config'] as Map<String, dynamic>? ?? {};
 
+      final extranalId = currentConfig['externalPlayerId'] ?? {};
+
+      extranalId[currentPlatform] = _defaultPlayerId;
+
       final updatedConfig = {
         ...currentConfig,
         'playback': {
@@ -84,12 +96,16 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'playbackSpeed': _playbackSpeed,
           'defaultAudioTrack': _defaultAudioTrack,
           'defaultSubtitleTrack': _defaultSubtitleTrack,
+          'externalPlayer': _enableExternalPlayer,
+          'externalPlayerId': extranalId,
         },
       };
 
       await _engine.collection('users').update(
         user.id,
-        body: {'config': updatedConfig},
+        body: {
+          'config': updatedConfig,
+        },
       );
 
       if (mounted) {
@@ -109,6 +125,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     }
   }
 
+  final currentPlatform = getPlatformInString();
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) {
@@ -127,6 +145,8 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         ),
       );
     }
+
+    print(_defaultPlayerId);
 
     return Scaffold(
       appBar: AppBar(
@@ -190,6 +210,35 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
               },
             ),
           ),
+          if (!isWeb)
+            SwitchListTile(
+              title: const Text('External Player'),
+              subtitle: const Text('Always open video in external player?'),
+              value: _enableExternalPlayer,
+              onChanged: (value) {
+                setState(() => _enableExternalPlayer = value);
+                _debouncedSave();
+              },
+            ),
+          if (_enableExternalPlayer &&
+              externalPlayers[currentPlatform]?.isNotEmpty == true)
+            ListTile(
+              title: const Text('Default Player'),
+              trailing: DropdownButton<String>(
+                value: _defaultPlayerId,
+                items: externalPlayers[currentPlatform]!
+                    .map(
+                      (item) => item.toDropdownMenuItem(),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _defaultPlayerId = value);
+                    _debouncedSave();
+                  }
+                },
+              ),
+            ),
         ],
       ),
     );

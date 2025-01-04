@@ -28,7 +28,19 @@ class StremioConnectionService extends BaseConnectionService {
     for (final addon in config.addons) {
       final manifest = await _getManifest(addon);
 
-      if (manifest.resources?.contains("meta") != true) {
+      if (manifest.resources == null) {
+        continue;
+      }
+
+      bool isMeta = false;
+      for (final item in manifest.resources!) {
+        if (item.name == "meta") {
+          isMeta = true;
+          break;
+        }
+      }
+
+      if (isMeta == false) {
         continue;
       }
 
@@ -187,8 +199,9 @@ class StremioConnectionService extends BaseConnectionService {
           continue;
         }
 
-        final hasIdPrefix =
-            (idPrefixes ?? []).where((item) => meta.id.startsWith(item));
+        final hasIdPrefix = (idPrefixes ?? []).where(
+          (item) => meta.id.startsWith(item),
+        );
 
         if (hasIdPrefix.isEmpty) {
           continue;

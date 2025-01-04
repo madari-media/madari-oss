@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:madari_client/features/connection/types/stremio.dart';
@@ -89,6 +91,53 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     return groupBy(episodes, (Video video) => video.season);
   }
 
+  void openEpisode({
+    required int currentSeason,
+    required Video episode,
+  }) async {
+    if (widget.service == null) {
+      return;
+    }
+    final onClose = showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        final meta = widget.meta.copyWith(
+          id: episode.id,
+        );
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text("Streams for S$currentSeason E${episode.episode}"),
+          ),
+          body: RenderStreamList(
+            service: widget.service!,
+            library: widget.library,
+            id: meta,
+            season: currentSeason.toString(),
+            shouldPop: widget.shouldPop,
+          ),
+        );
+      },
+    );
+
+    if (widget.shouldPop) {
+      final val = await onClose;
+
+      if (val is MediaURLSource && context.mounted) {
+        Navigator.pop(
+          context,
+          val,
+        );
+      }
+
+      return;
+    }
+
+    onClose.then((data) {
+      getWatchHistory();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final seasons = seasonMap.keys.toList()..sort();
@@ -122,6 +171,26 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
             children: [
               const SizedBox(
                 height: 12,
+              ),
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.shuffle),
+                    label: const Text("Random Episode"),
+                    onPressed: () {
+                      Random random = Random();
+                      int randomIndex = random.nextInt(
+                        widget.meta.videos!.length,
+                      );
+
+                      openEpisode(
+                        currentSeason: widget.meta.videos![randomIndex].season,
+                        episode: widget.meta.videos![randomIndex],
+                      );
+                    },
+                  ),
+                ),
               ),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -162,46 +231,10 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
-                    if (widget.service == null) {
-                      return;
-                    }
-                    final onClose = showModalBottomSheet(
-                      context: context,
-                      builder: (context) {
-                        final meta = widget.meta.copyWith(
-                          id: episode.id,
-                        );
-
-                        return Scaffold(
-                          appBar: AppBar(
-                            title: const Text("Streams"),
-                          ),
-                          body: RenderStreamList(
-                            service: widget.service!,
-                            library: widget.library,
-                            id: meta,
-                            season: currentSeason.toString(),
-                            shouldPop: widget.shouldPop,
-                          ),
-                        );
-                      },
+                    openEpisode(
+                      currentSeason: currentSeason,
+                      episode: episode,
                     );
-
-                    if (widget.shouldPop) {
-                      final val = await onClose;
-                      if (val is MediaURLSource && context.mounted) {
-                        Navigator.pop(
-                          context,
-                          val,
-                        );
-                      }
-
-                      return;
-                    }
-
-                    onClose.then((data) {
-                      getWatchHistory();
-                    });
                   },
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

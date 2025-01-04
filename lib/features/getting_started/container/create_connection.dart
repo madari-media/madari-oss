@@ -26,7 +26,9 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
   final PocketBase pb = AppEngine.engine.pb;
   final _formKey = GlobalKey<FormState>();
   final _urlController = TextEditingController();
-  final _nameController = TextEditingController(text: "Stremio Addons");
+  final _nameController = TextEditingController(
+    text: "Stremio Addons",
+  );
   Connection? _existingConnection;
 
   bool _isLoading = false;
@@ -43,9 +45,10 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
 
   loadExistingConnection() async {
     try {
-      final existingConnection = await pb
-          .collection("connection")
-          .getFirstListItem("type.type = 'stremio_addons'");
+      final existingConnection =
+          await pb.collection("connection").getFirstListItem(
+                "type.type = 'stremio_addons'",
+              );
 
       final connection = Connection.fromRecord(existingConnection);
 
@@ -54,7 +57,11 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
 
       if (config['addons'] != null) {
         for (var url in config['addons']) {
-          _validateAddonUrl(url);
+          try {
+            await _validateAddonUrl(url);
+          } catch (e) {
+            print("Failed to load addon");
+          }
         }
       }
 
@@ -99,6 +106,7 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
             'icon': manifest['logo'] ?? manifest['icon'],
             'url': url,
             'addons': manifest,
+            'manifestParsed': _manifest,
             'types': supportedTypes,
           });
           _urlController.clear();
@@ -117,8 +125,101 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
     }
   }
 
+  Future<bool> showAddonWarningDialog(
+    BuildContext context, {
+    required bool isMeta,
+    required bool isAddon,
+  }) async {
+    bool continueAnyway = false;
+
+    if (isMeta && isAddon) {
+      return true;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Warning!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isMeta || !isAddon)
+                const Text(
+                  'You are missing the following addons:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              const SizedBox(
+                height: 4,
+              ),
+              if (!isMeta) const Text('🔴 Meta Addon'),
+              if (!isAddon) const Text('🔴 Streaming Addon'),
+              const SizedBox(height: 10),
+              const Text(
+                'Continuing without these addons may limit functionality. Are you sure you want to proceed?',
+                style: TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                // User chooses to continue anyway
+                Navigator.of(context).pop();
+                continueAnyway = true;
+              },
+              child: const Text('CONTINUE ANYWAY'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // User chooses to add addon
+                Navigator.of(context).pop();
+                continueAnyway = false;
+              },
+              child: const Text('ADD ADDON'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return continueAnyway;
+  }
+
   Future<void> _saveConnection() async {
     if (!_formKey.currentState!.validate() || _addons.isEmpty) return;
+
+    bool hasMeta = false;
+    bool hasStream = false;
+
+    for (final item in _addons) {
+      final manifest = item['manifestParsed'] as StremioManifest;
+
+      if (manifest.resources == null) {
+        continue;
+      }
+
+      for (final resource in manifest.resources!) {
+        if (resource.name == "meta") {
+          hasMeta = true;
+        }
+
+        if (resource.name == "stream") {
+          hasStream = true;
+        }
+      }
+    }
+
+    final result = await showAddonWarningDialog(
+      context,
+      isAddon: hasStream,
+      isMeta: hasMeta,
+    );
+
+    if (!result) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -189,6 +290,16 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
   void _removeAddon(int index) {
     setState(() {
       _addons.removeAt(index);
+    });
+  }
+
+  void _reorderAddon(int oldIndex, int newIndex) {
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final item = _addons.removeAt(oldIndex);
+      _addons.insert(newIndex, item);
     });
   }
 
@@ -268,7 +379,13 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                   },
                 ),
               ),
-              if (_isLoading) const Center(child: CircularProgressIndicator()),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
@@ -289,10 +406,11 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                 const SizedBox(height: 10),
                 Flexible(
                   fit: FlexFit.loose,
-                  child: ListView.builder(
+                  child: ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _addons.length,
+                    onReorder: _reorderAddon,
                     itemBuilder: (context, index) {
                       final addon = _addons[index];
                       final name = utf8.decode(
@@ -300,6 +418,7 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                       );
 
                       return Card(
+                        key: Key('$index'),
                         margin: EdgeInsets.only(
                           bottom: index + 1 != _addons.length ? 10 : 0,
                         ),
@@ -363,26 +482,27 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
                     },
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: 10.0,
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _addons.isEmpty ? null : _saveConnection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white70,
-                      foregroundColor: Colors.black,
-                    ),
-                    child: Text(
-                      'Next',
-                      style: GoogleFonts.exo2().copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                )
               ],
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 12.0,
+                  top: 12.0,
+                ),
+                child: ElevatedButton(
+                  onPressed: _addons.isEmpty ? null : _saveConnection,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white70,
+                    foregroundColor: Colors.black,
+                  ),
+                  child: Text(
+                    'Next',
+                    style: GoogleFonts.exo2().copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ],

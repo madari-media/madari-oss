@@ -1,8 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:madari_client/utils/external_player.dart';
 
 import '../engine/engine.dart';
+
+part 'load_language.g.dart';
 
 Future<Map<String, String>> loadLanguages(BuildContext context) async {
   final data = await DefaultAssetBundle.of(context)
@@ -29,24 +33,33 @@ PlaybackConfig getPlaybackConfig() {
   final config = user.data['config'] as Map<String, dynamic>? ?? {};
   final playbackConfig = config['playback'] as Map<String, dynamic>? ?? {};
 
-  return PlaybackConfig(
-    autoPlay: playbackConfig['autoPlay'] ?? true,
-    playbackSpeed: playbackConfig['playbackSpeed']?.toDouble() ?? 1,
-    defaultAudioTrack: playbackConfig['defaultAudioTrack'] ?? 'eng',
-    defaultSubtitleTrack: playbackConfig['defaultSubtitleTrack'] ?? 'eng',
-  );
+  return PlaybackConfig.fromJson(playbackConfig);
 }
 
+@JsonSerializable()
 class PlaybackConfig {
   final bool autoPlay;
   final double playbackSpeed;
   final String defaultAudioTrack;
   final String defaultSubtitleTrack;
+  final bool externalPlayer;
+  final Map<String, String>? externalPlayerId;
 
   PlaybackConfig({
     required this.autoPlay,
     required this.playbackSpeed,
     required this.defaultAudioTrack,
     required this.defaultSubtitleTrack,
+    required this.externalPlayer,
+    this.externalPlayerId,
   });
+
+  String? get currentPlayerPackage {
+    return externalPlayerId?.containsKey(getPlatformInString()) == true
+        ? externalPlayerId![getPlatformInString()]
+        : null;
+  }
+
+  factory PlaybackConfig.fromJson(Map<String, dynamic> config) =>
+      _$PlaybackConfigFromJson(config);
 }

@@ -47,36 +47,13 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
 
     if (!kIsWeb) _downloadService = DownloadService.instance;
 
-    _stream = widget.stremio
-        .getStreams(
+    _stream = widget.stremio.getStreams(
       widget.item.type,
       widget.id,
       episode: widget.episode,
       season: widget.season,
-    )
-        .map((item) {
-      return [
-        if (widget.item.type == "movie")
-          for (final item in (widget.stremio.configParsed.movieIframe ?? []))
-            VideoStream(
-              title: widget.item.name,
-              behaviorHints: {
-                "filename": widget.item.name,
-                "iframe": item,
-              },
-            ),
-        if (widget.item.type == "series")
-          for (final item in (widget.stremio.configParsed.seriesIframe ?? []))
-            VideoStream(
-              title: widget.item.name,
-              behaviorHints: {
-                "filename": widget.item.name,
-                "iframe": item,
-              },
-            ),
-        ...item,
-      ];
-    });
+    );
+
     _setupDownloadListener();
     _checkExistingDownloads();
   }
@@ -223,8 +200,6 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
 
   @override
   Widget build(BuildContext context) {
-    print("Neo");
-
     return StreamBuilder(
       stream: _stream,
       builder: (context, snapshot) {

@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/doc_viewer/container/doc_viewer.dart';
+import 'package:madari_client/utils/external_player.dart';
 
+import '../../../../utils/load_language.dart';
 import '../../../doc_viewer/types/doc_source.dart';
 import '../../../downloads/service/service.dart';
 
@@ -224,6 +227,23 @@ class _RenderStreamListState extends State<RenderStreamList> {
                   Navigator.of(context).pop(item.source);
 
                   return;
+                }
+
+                PlaybackConfig config = getPlaybackConfig();
+
+                if (config.externalPlayer) {
+                  if (!kIsWeb) {
+                    if (item.source is URLSource ||
+                        item.source is TorrentSource) {
+                      if (config.externalPlayer && Platform.isAndroid) {
+                        openVideoUrlInExternalPlayerAndroid(
+                          videoUrl: (item.source as URLSource).url,
+                          playerPackage: config.currentPlayerPackage,
+                        );
+                        return;
+                      }
+                    }
+                  }
                 }
 
                 Navigator.of(context).push(
