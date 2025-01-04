@@ -5,7 +5,6 @@ import 'package:madari_client/engine/engine.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class MagicShowMarkdown extends StatefulWidget {
   final RecordModel record;
@@ -141,8 +140,6 @@ class _MagicShowMarkdownState extends State<MagicShowMarkdown> {
           }
         }
 
-        // Add the mermaid diagram
-        contentWidgets.add(_buildMermaidDiagram(match.group(1)!));
         lastEnd = match.end;
       }
 
@@ -170,17 +167,6 @@ class _MagicShowMarkdownState extends State<MagicShowMarkdown> {
       data: chunk,
       selectable: true,
       onTapLink: (text, href, title) => _handleMarkdownTap(text, href),
-    );
-  }
-
-  Widget _buildMermaidDiagram(String mermaidCode) {
-    return Container(
-      constraints: const BoxConstraints(
-        maxHeight: 300,
-      ),
-      child: MermaidRenderer(
-        html: mermaidCode,
-      ),
     );
   }
 
@@ -336,146 +322,6 @@ class _MagicShowMarkdownState extends State<MagicShowMarkdown> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class MermaidRenderer extends StatefulWidget {
-  final String html;
-
-  const MermaidRenderer({
-    super.key,
-    required this.html,
-  });
-
-  @override
-  State<MermaidRenderer> createState() => _MermaidRendererState();
-}
-
-class _MermaidRendererState extends State<MermaidRenderer> {
-  late WebViewController controller;
-  bool isFullScreen = false;
-  bool hasError = false;
-
-  String get html => """
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <meta name="viewport" content="width=device-width">
-      <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-      <script>
-        mermaid.initialize({
-          startOnLoad: true,
-          theme: 'default'
-        });
-
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-          window.flutter_inappwebview.callHandler('onError', msg);
-          return false;
-        };
-
-        mermaid.parseError = function(err) {
-          window.flutter_inappwebview.callHandler('onError', err);
-        };
-      </script>
-    </head>
-    <body>
-      <div class="mermaid">
-        ${widget.html}
-      </div>
-    </body>
-  </html>
-  """;
-
-  @override
-  void initState() {
-    super.initState();
-
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'flutter_inappwebview',
-        onMessageReceived: (message) {
-          setState(() {
-            hasError = true;
-          });
-        },
-      )
-      ..loadHtmlString(html);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (hasError) {
-      return Container(
-        height: 100,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.red),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Center(
-          child: Text(
-            'Unable to render diagram.\nPlease check the syntax.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.red),
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius:
-              isFullScreen ? BorderRadius.zero : BorderRadius.circular(10),
-          child: WebViewWidget(
-            controller: controller,
-          ),
-        ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: IconButton(
-            icon: Icon(
-              isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
-              color: Colors.grey[800],
-            ),
-            onPressed: () {
-              setState(() {
-                isFullScreen = !isFullScreen;
-              });
-              if (isFullScreen) {
-                final controller = WebViewController()
-                  ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                  ..loadHtmlString(html);
-
-                Navigator.of(context)
-                    .push(
-                  MaterialPageRoute(
-                    fullscreenDialog: true,
-                    builder: (context) => Scaffold(
-                      appBar: AppBar(
-                        leading: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        title: const Text("Diagram"),
-                      ),
-                      body: WebViewWidget(controller: controller),
-                    ),
-                  ),
-                )
-                    .then((_) {
-                  setState(() {
-                    isFullScreen = false;
-                  });
-                });
-              }
-            },
-          ),
-        ),
-      ],
     );
   }
 }

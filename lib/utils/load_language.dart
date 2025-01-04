@@ -38,10 +38,16 @@ PlaybackConfig getPlaybackConfig() {
 
 @JsonSerializable()
 class PlaybackConfig {
+  @JsonKey(defaultValue: true)
   final bool autoPlay;
+  @JsonKey(defaultValue: 1.0)
   final double playbackSpeed;
+  @JsonKey(defaultValue: "eng")
   final String defaultAudioTrack;
+  @JsonKey(defaultValue: "eng")
   final String defaultSubtitleTrack;
+
+  @JsonKey(defaultValue: false)
   final bool externalPlayer;
   final Map<String, String>? externalPlayerId;
 

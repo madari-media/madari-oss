@@ -44,12 +44,10 @@ dependencies:
   flutter_dotenv: ^5.2.1
   intl: ^0.20.1
   simple_animations: ^5.0.0+3
-  webview_flutter: ^4.10.0
   pdfrx: ^1.0.93
   photo_view: ^0.15.0
   window_manager: ^0.4.2
   background_downloader: ^8.8.0
-  xml: ^6.5.0
   file_picker: ^8.1.4
   flutter_inappwebview: ^6.1.5
   drift: ^2.22.1

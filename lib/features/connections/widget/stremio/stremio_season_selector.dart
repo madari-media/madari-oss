@@ -165,56 +165,62 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
 
     return SliverMainAxisGroup(
       slivers: [
-        SliverToBoxAdapter(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                height: 12,
-              ),
-              Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 320),
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.shuffle),
-                    label: const Text("Random Episode"),
-                    onPressed: () {
-                      Random random = Random();
-                      int randomIndex = random.nextInt(
-                        widget.meta.videos!.length,
-                      );
+        SliverPadding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isWideScreen ? (screenWidth - contentWidth) / 2 : 8,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  height: 12,
+                ),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.shuffle),
+                      label: const Text("Random Episode"),
+                      onPressed: () {
+                        Random random = Random();
+                        int randomIndex = random.nextInt(
+                          widget.meta.videos!.length,
+                        );
 
-                      openEpisode(
-                        currentSeason: widget.meta.videos![randomIndex].season,
-                        episode: widget.meta.videos![randomIndex],
-                      );
-                    },
+                        openEpisode(
+                          currentSeason:
+                              widget.meta.videos![randomIndex].season,
+                          episode: widget.meta.videos![randomIndex],
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TabBar(
+                    tabAlignment: TabAlignment.start,
+                    dividerColor: Colors.transparent,
+                    controller: _tabController,
+                    isScrollable: true,
+                    splashBorderRadius: BorderRadius.circular(8),
+                    padding: const EdgeInsets.all(4),
+                    tabs: seasons.map((season) {
+                      return Tab(
+                        text: season == 0 ? "Specials" : 'Season $season',
+                        height: 40,
+                      );
+                    }).toList(),
+                  ),
                 ),
-                child: TabBar(
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  controller: _tabController,
-                  isScrollable: true,
-                  splashBorderRadius: BorderRadius.circular(8),
-                  padding: const EdgeInsets.all(4),
-                  tabs: seasons.map((season) {
-                    return Tab(
-                      text: season == 0 ? "Specials" : 'Season $season',
-                      height: 40,
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
         SliverPadding(

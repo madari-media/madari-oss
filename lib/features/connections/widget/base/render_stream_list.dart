@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/doc_viewer/container/doc_viewer.dart';
-import 'package:madari_client/utils/external_player.dart';
 
+import '../../../../utils/external_player.dart';
 import '../../../../utils/load_language.dart';
 import '../../../doc_viewer/types/doc_source.dart';
 import '../../../downloads/service/service.dart';

@@ -274,16 +274,10 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
           if (widget.original != null &&
               widget.original?.type == "series" &&
               widget.original?.videos?.isNotEmpty == true)
-            SliverPadding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isWideScreen ? (screenWidth - contentWidth) / 2 : 0,
-                vertical: 0,
-              ),
-              sliver: StremioItemSeasonSelector(
-                meta: item!,
-                library: widget.library,
-                service: widget.service,
-              ),
+            StremioItemSeasonSelector(
+              meta: item!,
+              library: widget.library,
+              service: widget.service,
             ),
           SliverPadding(
             padding: EdgeInsets.symmetric(
