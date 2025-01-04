@@ -35,6 +35,21 @@ jobs:
           name: windows-build
           path: build/windows/x64/runner/Release/
 
+      - run: |
+          cd build/windows/x64/runner/Release
+          zip -r . WindowsRelease.zip
+          mkdir build
+          mv WindowsRelease.zip build
+
+      - uses: ryand56/r2-upload-action@v1.4
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: build/windows/x64/runner/Release/build
+          destination-dir: nightly/${{ github.run_id }}/windows
+
   build_android:
     runs-on: ubuntu-latest
     environment: prod
@@ -79,6 +94,15 @@ jobs:
           name: android-build
           path: build/app/outputs/flutter-apk/app-release.apk
 
+      - uses: ryand56/r2-upload-action@v1.4
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: build/app/outputs/flutter-apk
+          destination-dir: nightly/${{ github.run_id }}/android
+
   build_ipa:
     runs-on: macos-latest
     environment: prod
@@ -101,17 +125,32 @@ jobs:
       - name: Build iOS
         run: flutter build ios --release --no-codesign
 
-      - name: Pack IPA
-        run: "mkdir build/ios/iphoneos/Payload && mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload"
-
-      - name: Zip Ipa
-        run: "zip -qq -r -9 app.ipa build/ios/iphoneos/Payload"
+      - name: Create and Pack IPA
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          mv Runner.app Payload/
+          zip -r ../../../app.ipa Payload/
+          cd -
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
           path: app.ipa
+
+      - run: |
+          mkdir build
+          mv app.ipa build/
+
+      - uses: ryand56/r2-upload-action@v1.4
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: build/
+          destination-dir: nightly/${{ github.run_id }}/ios
 
   build_linux:
     runs-on: ubuntu-latest
@@ -146,6 +185,21 @@ jobs:
           name: linux-build
           path: build/linux/x64/release/bundle
 
+      - run: |
+          cd build/linux/x64/release
+          zip -r LinuxRelease.zip ./bundle
+          mkdir build && mv LinuxRelease.zip build/
+          cd -
+
+      - uses: ryand56/r2-upload-action@v1.4
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: build/linux/x64/release/build
+          destination-dir: nightly/${{ github.run_id }}/linux
+
   build_macos:
     runs-on: macos-latest
     environment: prod
@@ -168,7 +222,7 @@ jobs:
       - name: Build MacOS
         run: flutter build macos --release
 
-      - name: Islate the Build
+      - name: Isolate the Build
         run: mkdir build/macos/Build/Products/Release/AppRelease
 
       - run: mv build/macos/Build/Products/Release/Madari.app build/macos/Build/Products/Release/AppRelease/
@@ -178,3 +232,18 @@ jobs:
         with:
           name: macos-build
           path: build/macos/Build/Products/Release/AppRelease
+
+      - run: |
+          cd build/macos/Build/Products/Release/AppRelease
+          zip -r AppRelease.zip .
+          rm Madari.app
+          cd -
+
+      - uses: ryand56/r2-upload-action@v1.4
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: build/macos/Build/Products/Release/AppRelease
+          destination-dir: nightly/${{ github.run_id }}/macos
