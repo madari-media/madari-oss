@@ -36,10 +36,11 @@ jobs:
           path: build/windows/x64/runner/Release/
 
       - run: |
-          cd build/windows/x64/runner/Release
-          zip -r . WindowsRelease.zip
+          cd build\windows\x64\runner\Release
+          Compress-Archive -Path * -DestinationPath WindowsRelease.zip
           mkdir build
-          mv WindowsRelease.zip build
+          move WindowsRelease.zip build
+        shell: pwsh
 
       - uses: ryand56/r2-upload-action@v1.4
         with:
@@ -140,8 +141,8 @@ jobs:
           path: app.ipa
 
       - run: |
-          mkdir build
-          mv app.ipa build/
+          mkdir build_ipa
+          mv app.ipa build_ipa/
 
       - uses: ryand56/r2-upload-action@v1.4
         with:
@@ -149,7 +150,7 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: build/
+          source-dir: build/build_ipa/
           destination-dir: nightly/${{ github.run_id }}/ios
 
   build_linux:
@@ -236,7 +237,8 @@ jobs:
       - run: |
           cd build/macos/Build/Products/Release/AppRelease
           zip -r AppRelease.zip .
-          rm Madari.app
+          mkdir mac_build
+          mv AppRelease.zip mac_build
           cd -
 
       - uses: ryand56/r2-upload-action@v1.4
@@ -245,5 +247,5 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: build/macos/Build/Products/Release/AppRelease
+          source-dir: build/macos/Build/Products/Release/AppRelease/mac_build
           destination-dir: nightly/${{ github.run_id }}/macos
