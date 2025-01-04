@@ -49,7 +49,7 @@ class PlaybackConfig {
 
   @JsonKey(defaultValue: false)
   final bool externalPlayer;
-  final Map<String, String>? externalPlayerId;
+  final Map<String, String?>? externalPlayerId;
 
   PlaybackConfig({
     required this.autoPlay,

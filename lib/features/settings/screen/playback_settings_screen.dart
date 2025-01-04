@@ -146,8 +146,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
       );
     }
 
-    print(_defaultPlayerId);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Playback Settings'),
@@ -225,7 +223,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             ListTile(
               title: const Text('Default Player'),
               trailing: DropdownButton<String>(
-                value: _defaultPlayerId,
+                value: _defaultPlayerId == "" ? null : _defaultPlayerId,
                 items: externalPlayers[currentPlatform]!
                     .map(
                       (item) => item.toDropdownMenuItem(),
