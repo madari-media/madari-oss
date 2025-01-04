@@ -150,7 +150,7 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: build/build_ipa/
+          source-dir: build_ipa/
           destination-dir: nightly/${{ github.run_id }}/ios
 
   build_linux:
