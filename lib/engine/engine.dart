@@ -35,8 +35,7 @@ class AppEngine {
 
   AppEngine(AuthStore authStore) {
     pb = PocketBase(
-      // 'https://zeee.fly.dev' ??
-      (kDebugMode ? 'http://100.64.0.1:8090' : 'https://zeee.fly.dev'),
+      (kDebugMode ? 'http://100.64.0.1:8090' : 'https://api.madari.media'),
       authStore: authStore,
     );
     _databaseProvider = DatabaseProvider();

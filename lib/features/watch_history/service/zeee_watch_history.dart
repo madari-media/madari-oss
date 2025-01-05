@@ -30,11 +30,13 @@ class ZeeeWatchHistory extends BaseWatchHistory {
   Timer? _syncTimer;
   static const _lastSyncTimeKey = 'watch_history_last_sync_time';
   final _prefs = SharedPreferences.getInstance();
+  final db = AppEngine.engine.database;
 
   late final StreamSubscription<AuthStoreEvent> _listener;
 
   Future clear() async {
     (await _prefs).remove(_lastSyncTimeKey);
+    await db.watchHistoryQueries.clearWatchHistory();
   }
 
   ZeeeWatchHistory() {

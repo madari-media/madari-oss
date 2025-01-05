@@ -46,6 +46,8 @@ class PlaybackConfig {
   final String defaultAudioTrack;
   @JsonKey(defaultValue: "eng")
   final String defaultSubtitleTrack;
+  @JsonKey(defaultValue: false)
+  final bool disableSubtitle;
 
   @JsonKey(defaultValue: false)
   final bool externalPlayer;
@@ -57,6 +59,7 @@ class PlaybackConfig {
     required this.defaultAudioTrack,
     required this.defaultSubtitleTrack,
     required this.externalPlayer,
+    required this.disableSubtitle,
     this.externalPlayerId,
   });
 

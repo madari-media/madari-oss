@@ -243,7 +243,7 @@ class Meta extends LibraryItem {
   @JsonKey(name: "genre")
   final List<String>? genre;
   @JsonKey(name: "imdbRating")
-  final String? imdbRating;
+  final dynamic imdbRating_;
   @JsonKey(name: "poster")
   String? poster;
   @JsonKey(name: "released")
@@ -281,7 +281,7 @@ class Meta extends LibraryItem {
   @JsonKey(name: "genres")
   final List<String>? genres;
   @JsonKey(name: "releaseInfo")
-  final String? releaseInfo;
+  final dynamic releaseInfo_;
   @JsonKey(name: "trailerStreams")
   final List<TrailerStream>? trailerStreams;
   @JsonKey(name: "links")
@@ -297,6 +297,14 @@ class Meta extends LibraryItem {
   @JsonKey(name: "dvdRelease")
   final DateTime? dvdRelease;
 
+  String get imdbRating {
+    return (imdbRating_ ?? "").toString();
+  }
+
+  String get releaseInfo {
+    return (releaseInfo_).toString();
+  }
+
   Meta({
     this.imdbId,
     this.name,
@@ -306,7 +314,7 @@ class Meta extends LibraryItem {
     this.country,
     this.description,
     this.genre,
-    this.imdbRating,
+    this.imdbRating_,
     this.poster,
     this.released,
     this.slug,
@@ -325,7 +333,7 @@ class Meta extends LibraryItem {
     required this.id,
     this.videos,
     this.genres,
-    this.releaseInfo,
+    this.releaseInfo_,
     this.trailerStreams,
     this.links,
     this.behaviorHints,
@@ -381,7 +389,7 @@ class Meta extends LibraryItem {
         country: country ?? this.country,
         description: description ?? this.description,
         genre: genre ?? this.genre,
-        imdbRating: imdbRating ?? this.imdbRating,
+        imdbRating_: imdbRating ?? imdbRating_.toString(),
         poster: poster ?? this.poster,
         released: released ?? this.released,
         slug: slug ?? this.slug,
@@ -400,7 +408,7 @@ class Meta extends LibraryItem {
         id: id ?? this.id,
         videos: videos ?? this.videos,
         genres: genres ?? this.genres,
-        releaseInfo: releaseInfo ?? this.releaseInfo,
+        releaseInfo_: releaseInfo ?? this.releaseInfo,
         trailerStreams: trailerStreams ?? this.trailerStreams,
         links: links ?? this.links,
         behaviorHints: behaviorHints ?? this.behaviorHints,

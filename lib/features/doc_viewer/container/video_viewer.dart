@@ -104,12 +104,20 @@ class _VideoViewerState extends State<VideoViewer> {
       }
     }
 
-    for (final item in tracks.subtitle) {
-      if (defaultSubtitle == item.id ||
-          defaultSubtitle == item.language ||
-          defaultSubtitle == item.title) {
-        controller.player.setSubtitleTrack(item);
-        break;
+    if (config.disableSubtitle) {
+      for (final item in tracks.subtitle) {
+        if (item.id == "no" || item.language == "no" || item.title == "no") {
+          controller.player.setSubtitleTrack(item);
+        }
+      }
+    } else {
+      for (final item in tracks.subtitle) {
+        if (defaultSubtitle == item.id ||
+            defaultSubtitle == item.language ||
+            defaultSubtitle == item.title) {
+          controller.player.setSubtitleTrack(item);
+          break;
+        }
       }
     }
   }

@@ -25,6 +25,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   String _defaultSubtitleTrack = 'eng';
   bool _enableExternalPlayer = true;
   String? _defaultPlayerId;
+  bool _disabledSubtitle = false;
 
   Map<String, String> _availableLanguages = {};
 
@@ -62,6 +63,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
         playbackConfig.externalPlayerId?.containsKey(currentPlatform) == true
             ? playbackConfig.externalPlayerId![currentPlatform]
             : null;
+    _disabledSubtitle = playbackConfig.disableSubtitle;
   }
 
   @override
@@ -72,8 +74,10 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
 
   void _debouncedSave() {
     _saveDebouncer?.cancel();
-    _saveDebouncer =
-        Timer(const Duration(milliseconds: 500), _savePlaybackSettings);
+    _saveDebouncer = Timer(
+      const Duration(milliseconds: 500),
+      _savePlaybackSettings,
+    );
   }
 
   Future<void> _savePlaybackSettings() async {
@@ -98,6 +102,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'defaultSubtitleTrack': _defaultSubtitleTrack,
           'externalPlayer': _enableExternalPlayer,
           'externalPlayerId': extranalId,
+          'disableSubtitle': _disabledSubtitle,
         },
       };
 
@@ -182,6 +187,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
               ],
             ),
           ),
+          const Divider(),
           ListTile(
             title: const Text('Default Audio Track'),
             trailing: DropdownButton<String>(
@@ -195,19 +201,29 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
               },
             ),
           ),
-          ListTile(
-            title: const Text('Default Subtitle Track'),
-            trailing: DropdownButton<String>(
-              value: _defaultSubtitleTrack,
-              items: dropdown,
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _defaultSubtitleTrack = value);
-                  _debouncedSave();
-                }
-              },
-            ),
+          SwitchListTile(
+            title: const Text('Disable Subtitle'),
+            value: _disabledSubtitle,
+            onChanged: (value) {
+              setState(() => _disabledSubtitle = value);
+              _debouncedSave();
+            },
           ),
+          if (!_disabledSubtitle)
+            ListTile(
+              title: const Text('Default Subtitle Track'),
+              trailing: DropdownButton<String>(
+                value: _defaultSubtitleTrack,
+                items: dropdown,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _defaultSubtitleTrack = value);
+                    _debouncedSave();
+                  }
+                },
+              ),
+            ),
+          const Divider(),
           if (!isWeb)
             SwitchListTile(
               title: const Text('External Player'),

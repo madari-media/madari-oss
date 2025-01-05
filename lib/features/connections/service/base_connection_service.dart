@@ -90,11 +90,12 @@ abstract class BaseConnectionService {
 
   Future<LibraryItem?> getItemById(LibraryItem id);
 
-  Stream<List<StreamList>> getStreams(
+  Future<void> getStreams(
     LibraryRecord library,
     LibraryItem id, {
     String? season,
     String? episode,
+    OnStreamCallback? callback,
   });
 
   BaseConnectionService({
@@ -106,11 +107,23 @@ class StreamList {
   final String title;
   final String? description;
   final DocSource source;
+  final StreamSource? streamSource;
 
   StreamList({
     required this.title,
     this.description,
     required this.source,
+    this.streamSource,
+  });
+}
+
+class StreamSource {
+  final String title;
+  final String id;
+
+  StreamSource({
+    required this.title,
+    required this.id,
   });
 }
 

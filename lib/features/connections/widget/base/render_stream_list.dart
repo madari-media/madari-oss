@@ -161,108 +161,160 @@ class _RenderStreamListState extends State<RenderStreamList> {
     );
   }
 
+  bool hasError = false;
+  bool isLoading = true;
+  List<StreamList>? _list;
+
+  final List<Error> errors = [];
+
+  final Map<String, StreamSource> _sources = {};
+
   Future getLibrary() async {
     final library = await BaseConnectionService.getLibraries();
 
-    setState(() {
-      _stream = widget.service.getStreams(
-        library.data.firstWhere((i) => i.id == widget.library),
-        widget.id,
-        episode: widget.episode,
-        season: widget.season,
-      );
-    });
+    final result = await widget.service.getStreams(
+      library.data.firstWhere((i) => i.id == widget.library),
+      widget.id,
+      episode: widget.episode,
+      season: widget.season,
+      callback: (items, error) {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            _list = items;
+
+            _list?.forEach((item) {
+              if (item.streamSource != null) {
+                _sources[item.streamSource!.id] = item.streamSource!;
+              }
+            });
+          });
+        }
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        _list = _list ?? [];
+      });
+    }
   }
+
+  String? selectedAddonFilter;
 
   @override
   Widget build(BuildContext context) {
-    if (_stream == null) {
+    if (isLoading || _list == null) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    return StreamBuilder(
-      stream: _stream,
-      builder: (BuildContext context, snapshot) {
-        if (snapshot.hasError && (snapshot.data?.isEmpty ?? true) == true) {
-          print(snapshot.error);
-          print(snapshot.stackTrace);
-          return Text("Error: ${snapshot.error}");
-        }
+    if (hasError) {
+      return const Text("Something went wrong");
+    }
 
-        if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
+    if ((_list ?? []).isEmpty) {
+      return Center(
+        child: Text(
+          "No stream found",
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      );
+    }
 
-        if (snapshot.data?.isEmpty == true &&
-            snapshot.connectionState == ConnectionState.done) {
-          return Center(
-            child: Text(
-              "No stream found",
-              style: Theme.of(context).textTheme.bodyLarge,
+    final filteredList = (_list ?? []).where((item) {
+      if (item.streamSource == null || selectedAddonFilter == null) {
+        return true;
+      }
+
+      return item.streamSource!.id == selectedAddonFilter;
+    }).toList();
+
+    return ListView.builder(
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return SizedBox(
+            height: 42,
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 12.0,
+                right: 12.0,
+              ),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final value in _sources.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        selected: value.id == selectedAddonFilter,
+                        label: Text(value.title),
+                        onSelected: (i) {
+                          setState(() {
+                            selectedAddonFilter = i ? value.id : null;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         }
 
-        return ListView.builder(
-          itemBuilder: (context, index) {
-            final item = snapshot.data![index];
+        final item = filteredList[index - 1];
 
-            return ListTile(
-              title: Text(item.title),
-              subtitle:
-                  item.description == null ? null : Text(item.description!),
-              trailing: (item.source is MediaURLSource)
-                  ? _buildDownloadButton(
-                      context,
-                      (item.source as MediaURLSource).url,
-                      item.title,
-                    )
-                  : null,
-              onTap: () {
-                if (widget.shouldPop) {
-                  Navigator.of(context).pop(item.source);
+        return ListTile(
+          title: Text(item.title),
+          subtitle: item.description == null ? null : Text(item.description!),
+          trailing: (item.source is MediaURLSource)
+              ? _buildDownloadButton(
+                  context,
+                  (item.source as MediaURLSource).url,
+                  item.title,
+                )
+              : null,
+          onTap: () {
+            if (widget.shouldPop) {
+              Navigator.of(context).pop(item.source);
 
-                  return;
-                }
+              return;
+            }
 
-                PlaybackConfig config = getPlaybackConfig();
+            PlaybackConfig config = getPlaybackConfig();
 
-                if (config.externalPlayer) {
-                  if (!kIsWeb) {
-                    if (item.source is URLSource ||
-                        item.source is TorrentSource) {
-                      if (config.externalPlayer && Platform.isAndroid) {
-                        openVideoUrlInExternalPlayerAndroid(
-                          videoUrl: (item.source as URLSource).url,
-                          playerPackage: config.currentPlayerPackage,
-                        );
-                        return;
-                      }
-                    }
+            if (config.externalPlayer) {
+              if (!kIsWeb) {
+                if (item.source is URLSource || item.source is TorrentSource) {
+                  if (config.externalPlayer && Platform.isAndroid) {
+                    openVideoUrlInExternalPlayerAndroid(
+                      videoUrl: (item.source as URLSource).url,
+                      playerPackage: config.currentPlayerPackage,
+                    );
+                    return;
                   }
                 }
+              }
+            }
 
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (ctx) => DocViewer(
-                      source: item.source,
-                      service: widget.service,
-                      library: widget.library,
-                      meta: widget.id,
-                      season: widget.season,
-                    ),
-                  ),
-                );
-              },
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (ctx) => DocViewer(
+                  source: item.source,
+                  service: widget.service,
+                  library: widget.library,
+                  meta: widget.id,
+                  season: widget.season,
+                ),
+              ),
             );
           },
-          itemCount: snapshot.data!.length,
         );
       },
+      itemCount: filteredList.length + 1,
     );
   }
 }

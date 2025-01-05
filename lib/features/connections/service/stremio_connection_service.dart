@@ -17,6 +17,8 @@ part 'stremio_connection_service.g.dart';
 
 final Map<String, String> manifestCache = {};
 
+typedef OnStreamCallback = void Function(List<StreamList>? items, Error?);
+
 class StremioConnectionService extends BaseConnectionService {
   final StremioConfig config;
 
@@ -224,47 +226,43 @@ class StremioConnectionService extends BaseConnectionService {
   }
 
   @override
-  Stream<List<StreamList>> getStreams(
+  Future<void> getStreams(
     LibraryRecord library,
     LibraryItem id, {
     String? season,
     String? episode,
-  }) async* {
+    OnStreamCallback? callback,
+  }) async {
     final List<StreamList> streams = [];
     final meta = id as Meta;
 
+    final List<Future<void>> promises = [];
+
     for (final addon in config.addons) {
-      final addonManifest = await _getManifest(addon);
+      final future = Future.delayed(const Duration(seconds: 0), () async {
+        final addonManifest = await _getManifest(addon);
 
-      for (final _resource in (addonManifest.resources ?? [])) {
-        final resource = _resource as ResourceObject;
+        for (final resource_ in (addonManifest.resources ?? [])) {
+          final resource = resource_ as ResourceObject;
 
-        if (resource.name != "stream") {
-          continue;
-        }
+          if (!doesAddonSupportStream(resource, addonManifest, meta)) {
+            continue;
+          }
 
-        final idPrefixes = resource.idPrefixes ?? addonManifest.idPrefixes;
-        final types = resource.types ?? addonManifest.types;
-
-        if (types == null || !types.contains(meta.type)) {
-          continue;
-        }
-
-        final hasIdPrefix = (idPrefixes ?? []).where(
-          (item) => meta.id.startsWith(item),
-        );
-
-        if (hasIdPrefix.isEmpty) {
-          continue;
-        }
-
-        try {
           final url =
               "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
 
           final result = await http.get(Uri.parse(url), headers: {});
 
           if (result.statusCode == 404) {
+            if (callback != null) {
+              callback(
+                null,
+                ArgumentError(
+                  "Invalid status code for the addon ${addonManifest.name} with id ${addonManifest.id}",
+                ),
+              );
+            }
             continue;
           }
 
@@ -272,71 +270,125 @@ class StremioConnectionService extends BaseConnectionService {
 
           streams.addAll(
             body.streams
-                .map((item) {
-                  String streamTitle = item.title ?? item.name ?? "No title";
-
-                  try {
-                    streamTitle = utf8.decode(
-                      (item.title ?? item.name ?? "No Title").runes.toList(),
-                    );
-                  } catch (e) {}
-
-                  final streamDescription = item.description != null
-                      ? utf8.decode(
-                          (item.description!).runes.toList(),
-                        )
-                      : null;
-
-                  String title = meta.name ?? item.title ?? "No title";
-
-                  if (season != null) title += " S$season";
-                  if (episode != null) title += " E$episode";
-
-                  DocSource? source;
-
-                  if (item.url != null) {
-                    source = MediaURLSource(
-                      title: title,
-                      url: item.url!,
-                      id: meta.id,
-                    );
-                  }
-
-                  if (item.infoHash != null) {
-                    source = TorrentSource(
-                      title: title,
-                      infoHash: item.infoHash!,
-                      id: meta.id,
-                      fileName: "$title.mp4",
-                      season: season,
-                      episode: episode,
-                    );
-                  }
-
-                  if (source == null) {
-                    return null;
-                  }
-
-                  return StreamList(
-                    title: streamTitle,
-                    description: streamDescription,
-                    source: source,
-                  );
-                })
+                .map(
+                  (item) => videoStreamToStreamList(
+                      item, meta, season, episode, addonManifest),
+                )
                 .whereType<StreamList>()
                 .toList(),
           );
-        } catch (e) {
-          continue;
-        }
 
-        if (streams.isNotEmpty) yield streams;
-      }
+          if (callback != null) {
+            callback(streams, null);
+          }
+        }
+      }).catchError((error) {
+        if (callback != null) callback(null, error);
+      });
+
+      promises.add(future);
     }
 
-    yield streams;
+    await Future.wait(promises);
 
     return;
+  }
+
+  bool doesAddonSupportStream(
+    ResourceObject resource,
+    StremioManifest addonManifest,
+    Meta meta,
+  ) {
+    if (resource.name != "stream") {
+      return false;
+    }
+
+    final idPrefixes = resource.idPrefixes ?? addonManifest.idPrefixes;
+    final types = resource.types ?? addonManifest.types;
+
+    if (types == null || !types.contains(meta.type)) {
+      return false;
+    }
+
+    final hasIdPrefix = (idPrefixes ?? []).where(
+      (item) => meta.id.startsWith(item),
+    );
+
+    if (hasIdPrefix.isEmpty) {
+      return false;
+    }
+
+    return true;
+  }
+
+  StreamList? videoStreamToStreamList(
+    VideoStream item,
+    Meta meta,
+    String? season,
+    String? episode,
+    StremioManifest addonManifest,
+  ) {
+    String streamTitle =
+        (item.name != null ? "${item.name} ${item.title}" : item.title) ??
+            "No title";
+
+    try {
+      streamTitle = utf8.decode(streamTitle.runes.toList());
+    } catch (e) {}
+
+    final streamDescription = item.description != null
+        ? utf8.decode(
+            (item.description!).runes.toList(),
+          )
+        : null;
+
+    String title = meta.name ?? item.title ?? "No title";
+
+    if (season != null) title += " S$season";
+    if (episode != null) title += " E$episode";
+
+    DocSource? source;
+
+    if (item.url != null) {
+      source = MediaURLSource(
+        title: title,
+        url: item.url!,
+        id: meta.id,
+      );
+    }
+
+    if (item.infoHash != null) {
+      source = TorrentSource(
+        title: title,
+        infoHash: item.infoHash!,
+        id: meta.id,
+        fileName: "$title.mp4",
+        season: season,
+        episode: episode,
+      );
+    }
+
+    if (source == null) {
+      return null;
+    }
+
+    String addonName = addonManifest.name;
+
+    try {
+      addonName = utf8.decode(
+        (addonName).runes.toList(),
+      );
+    } catch (e) {}
+
+    return StreamList(
+      title: streamTitle,
+      description: streamDescription,
+      source: source,
+      streamSource: StreamSource(
+        title: addonName,
+        id: addonManifest.id,
+      ),
+    );
   }
 }
 

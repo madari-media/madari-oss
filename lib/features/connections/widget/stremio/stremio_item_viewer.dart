@@ -96,252 +96,259 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
     }
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: isWideScreen ? 600 : 500,
-            pinned: true,
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(40),
-              child: Container(
-                width: double.infinity,
-                color: Colors.black,
-                padding: EdgeInsets.symmetric(
-                  horizontal:
-                      isWideScreen ? (screenWidth - contentWidth) / 2 : 16,
-                  vertical: 16,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: isWideScreen ? 600 : 500,
+              pinned: true,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(40),
+                child: Container(
+                  width: double.infinity,
+                  color: Colors.black,
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        isWideScreen ? (screenWidth - contentWidth) / 2 : 16,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item!.name!,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        icon: _isLoading
+                            ? Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                child: const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 24,
+                                color: Colors.black87,
+                              ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          if (item!.type == "series" && _isLoading) {
+                            return;
+                          }
+
+                          _onPlayPressed(context);
+                        },
+                        label: Text(
+                          "Play",
+                          style: Theme.of(context)
+                              .primaryTextTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: Colors.black87,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Expanded(
-                      child: Text(
-                        item!.name!,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    if (item!.background != null)
+                      Image.network(
+                        item!.background!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          if (item!.poster == null) {
+                            return Container();
+                          }
+                          return Image.network(item!.poster!,
+                              fit: BoxFit.cover);
+                        },
+                      ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.8),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      icon: _isLoading
-                          ? Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              child: const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(),
+                    Positioned(
+                      bottom: 86,
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isWideScreen
+                              ? (screenWidth - contentWidth) / 2
+                              : 16,
+                          vertical: 16,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Hero(
+                              tag: "${widget.hero}",
+                              child: Container(
+                                width: 150,
+                                height: 225,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: item!.poster == null
+                                      ? null
+                                      : DecorationImage(
+                                          image: NetworkImage(item!.poster!),
+                                          fit: BoxFit.cover,
+                                        ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      spreadRadius: 2,
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            )
-                          : const Icon(
-                              Icons.play_arrow_rounded,
-                              size: 24,
-                              color: Colors.black87,
                             ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        if (item!.type == "series" && _isLoading) {
-                          return;
-                        }
-
-                        _onPlayPressed(context);
-                      },
-                      label: Text(
-                        "Play",
-                        style: Theme.of(context)
-                            .primaryTextTheme
-                            .bodyMedium
-                            ?.copyWith(
-                              color: Colors.black87,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (item!.year != null)
+                                        Chip(
+                                          label: Text(item!.year!),
+                                          backgroundColor: Colors.white24,
+                                          labelStyle: const TextStyle(
+                                              color: Colors.white),
+                                        ),
+                                      const SizedBox(width: 8),
+                                      if (item!.imdbRating != null)
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.star,
+                                              color: Colors.amber,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              item!.imdbRating!,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.copyWith(
+                                                      color: Colors.white),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (item!.background != null)
-                    Image.network(
-                      item!.background!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        if (item!.poster == null) {
-                          return Container();
-                        }
-                        return Image.network(item!.poster!, fit: BoxFit.cover);
-                      },
+            if (widget.original != null &&
+                widget.original?.type == "series" &&
+                widget.original?.videos?.isNotEmpty == true)
+              StremioItemSeasonSelector(
+                meta: item!,
+                library: widget.library,
+                service: widget.service,
+              ),
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal:
+                    isWideScreen ? (screenWidth - contentWidth) / 2 : 16,
+                vertical: 16,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (widget.original != null)
+                    const SizedBox(
+                      height: 12,
                     ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.8),
-                        ],
-                      ),
-                    ),
+                  // Description
+                  Text(
+                    'Description',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  Positioned(
-                    bottom: 86,
-                    left: 16,
-                    right: 16,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isWideScreen
-                            ? (screenWidth - contentWidth) / 2
-                            : 16,
-                        vertical: 16,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Hero(
-                            tag: "${widget.hero}",
-                            child: Container(
-                              width: 150,
-                              height: 225,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                image: item!.poster == null
-                                    ? null
-                                    : DecorationImage(
-                                        image: NetworkImage(item!.poster!),
-                                        fit: BoxFit.cover,
-                                      ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    spreadRadius: 2,
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    if (item!.year != null)
-                                      Chip(
-                                        label: Text(item!.year!),
-                                        backgroundColor: Colors.white24,
-                                        labelStyle: const TextStyle(
-                                            color: Colors.white),
-                                      ),
-                                    const SizedBox(width: 8),
-                                    if (item!.imdbRating != null)
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.star,
-                                            color: Colors.amber,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            item!.imdbRating!,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium
-                                                ?.copyWith(color: Colors.white),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  if (item!.description != null) const SizedBox(height: 8),
+                  if (item!.description != null)
+                    Text(
+                      item!.description!,
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                  ),
-                ],
+                  const SizedBox(height: 16),
+
+                  // Additional Details
+                  _buildDetailSection(context, 'Additional Information', [
+                    if (item!.genre != null)
+                      _buildDetailRow('Genres', item!.genre!.join(', ')),
+                    if (item!.country != null)
+                      _buildDetailRow('Country', item!.country!),
+                    if (item!.runtime != null)
+                      _buildDetailRow('Runtime', item!.runtime!),
+                    if (item!.language != null)
+                      _buildDetailRow('Language', item!.language!),
+                  ]),
+
+                  // Cast
+                  if (item!.creditsCast != null &&
+                      item!.creditsCast!.isNotEmpty)
+                    _buildCastSection(context, item!.creditsCast!),
+
+                  // Cast
+                  if (item!.creditsCrew != null &&
+                      item!.creditsCrew!.isNotEmpty)
+                    _buildCastSection(
+                      context,
+                      title: "Crew",
+                      item!.creditsCrew!.map((item) {
+                        return CreditsCast(
+                          character: item.department,
+                          name: item.name,
+                          profilePath: item.profilePath,
+                          id: item.id,
+                        );
+                      }).toList(),
+                    ),
+
+                  // Trailers
+                  if (item!.trailerStreams != null &&
+                      item!.trailerStreams!.isNotEmpty)
+                    _buildTrailersSection(context, item!.trailerStreams!),
+                ]),
               ),
             ),
-          ),
-          if (widget.original != null &&
-              widget.original?.type == "series" &&
-              widget.original?.videos?.isNotEmpty == true)
-            StremioItemSeasonSelector(
-              meta: item!,
-              library: widget.library,
-              service: widget.service,
-            ),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isWideScreen ? (screenWidth - contentWidth) / 2 : 16,
-              vertical: 16,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (widget.original != null)
-                  const SizedBox(
-                    height: 12,
-                  ),
-                // Description
-                Text(
-                  'Description',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                if (item!.description != null) const SizedBox(height: 8),
-                if (item!.description != null)
-                  Text(
-                    item!.description!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                const SizedBox(height: 16),
-
-                // Additional Details
-                _buildDetailSection(context, 'Additional Information', [
-                  if (item!.genre != null)
-                    _buildDetailRow('Genres', item!.genre!.join(', ')),
-                  if (item!.country != null)
-                    _buildDetailRow('Country', item!.country!),
-                  if (item!.runtime != null)
-                    _buildDetailRow('Runtime', item!.runtime!),
-                  if (item!.language != null)
-                    _buildDetailRow('Language', item!.language!),
-                ]),
-
-                // Cast
-                if (item!.creditsCast != null && item!.creditsCast!.isNotEmpty)
-                  _buildCastSection(context, item!.creditsCast!),
-
-                // Cast
-                if (item!.creditsCrew != null && item!.creditsCrew!.isNotEmpty)
-                  _buildCastSection(
-                    context,
-                    title: "Crew",
-                    item!.creditsCrew!.map((item) {
-                      return CreditsCast(
-                        character: item.department,
-                        name: item.name,
-                        profilePath: item.profilePath,
-                        id: item.id,
-                      );
-                    }).toList(),
-                  ),
-
-                // Trailers
-                if (item!.trailerStreams != null &&
-                    item!.trailerStreams!.isNotEmpty)
-                  _buildTrailersSection(context, item!.trailerStreams!),
-              ]),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

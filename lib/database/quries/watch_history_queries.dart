@@ -35,4 +35,8 @@ class WatchHistoryQueries extends DatabaseAccessor<AppDatabase>
     return (select(watchHistoryTable)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
   }
+
+  Future<void> clearWatchHistory() async {
+    await delete(watchHistoryTable).go();
+  }
 }
