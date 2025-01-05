@@ -10,10 +10,10 @@ build_web:
 	flutter build web --target lib/main_web.dart --release --pwa-strategy none --wasm
 
 build_mac:
-	flutter build macos --target lib/main.dart --release --no-tree-shake-icons
+	flutter build macos --target lib/main.dart --release
 
 build_android:
-	flutter build apk --release --no-tree-shake-icons
+	flutter build apk --release
 
 build_windows:
-	flutter build windows --release --no-tree-shake-icons
+	flutter build windows --release

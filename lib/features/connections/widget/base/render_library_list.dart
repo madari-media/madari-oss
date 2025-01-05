@@ -8,6 +8,7 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../utils/grid.dart';
+import '../stremio/stremio_filter.dart';
 
 final pb = AppEngine.engine.pb;
 
@@ -41,7 +42,9 @@ class _RenderLibraryListState extends State<RenderLibraryList> {
       query: query,
       builder: (ctx, state) {
         if (state.status == QueryStatus.loading) {
-          return const SpinnerCards();
+          return const Center(
+            child: SpinnerCards(),
+          );
         }
 
         if (state.status == QueryStatus.error) {
@@ -140,6 +143,8 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    loadFilters();
   }
 
   @override
@@ -150,22 +155,22 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
     super.dispose();
   }
 
+  List<ConnectionFilterItem> filters = [];
+
   InfiniteQuery getQuery() {
     return InfiniteQuery<List<LibraryItem>, int>(
       key:
-          "loadLibrary${widget.item.id}${widget.filters.map((res) => "${res.title}=${res.value}").join("&")}",
+          "loadLibrary${widget.item.id}${(widget.filters + filters).map((res) => "${res.title}=${res.value}").join("&")}",
       queryFn: (page) {
         return service
             .getItems(
           widget.item,
-          items: widget.filters,
+          items: widget.filters + filters,
           page: page,
         )
             .then((docs) {
           return docs.items.toList();
         }).catchError((e, stack) {
-          print(e);
-          print(stack);
           throw e;
         });
       },
@@ -180,8 +185,94 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
 
   bool isUnsupported = false;
 
+  loadFilters() async {
+    final filters = await service.getFilters(widget.item);
+
+    if (mounted) {
+      setState(() {
+        filterList = filters;
+      });
+    }
+  }
+
+  List<ConnectionFilter>? filterList;
+
   @override
   Widget build(BuildContext context) {
+    if (widget.isGrid) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.item.title),
+        ),
+        body: SizedBox(
+          height: MediaQuery.of(context).size.height - 96,
+          child: Flex(
+            direction: Axis.vertical,
+            children: [
+              const SizedBox(
+                height: 10,
+              ),
+              if (filterList == null)
+                Row(
+                  children: [
+                    SizedBox(
+                      height: 36,
+                      width: 120,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 10.0,
+                          right: 10.0,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const SizedBox(
+                            height: 36,
+                            width: 120,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              if (filterList != null)
+                InlineFilters(
+                  filters: filterList ?? [],
+                  filterCallback: (item) {
+                    filters = item;
+
+                    setState(() {
+                      query = getQuery();
+                    });
+                  },
+                ),
+              const SizedBox(
+                height: 10,
+              ),
+              Expanded(
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height - 96,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 10.0,
+                      right: 10.0,
+                    ),
+                    child: _buildBody(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return _buildBody();
+  }
+
+  _buildBody() {
     final itemWidth = _getItemWidth(context);
     final listHeight = _getListHeight(context);
 
@@ -320,6 +411,7 @@ class SpinnerCards extends StatelessWidget {
       height: itemHeight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, _) {
           return SizedBox(
             width: itemWidth,

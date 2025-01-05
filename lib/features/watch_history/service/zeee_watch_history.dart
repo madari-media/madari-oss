@@ -39,6 +39,10 @@ class ZeeeWatchHistory extends BaseWatchHistory {
 
   ZeeeWatchHistory() {
     _listener = AppEngine.engine.pb.authStore.onChange.listen((auth) {
+      if (!AppEngine.engine.pb.authStore.isValid) {
+        return;
+      }
+
       _initializeFromServer().then((docs) {
         if (_syncTimer != null) {
           _syncTimer!.cancel();

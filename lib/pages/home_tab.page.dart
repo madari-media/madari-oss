@@ -2,6 +2,7 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:madari_client/engine/library.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 
 import '../features/connections/widget/base/render_library_list.dart';
@@ -10,6 +11,7 @@ import '../features/getting_started/container/getting_started.dart';
 class HomeTabPage extends StatefulWidget {
   final String? search;
   final bool hideAppBar;
+  final LibraryRecordResponse? defaultLibraries;
 
   static String get routeName => "/";
 
@@ -17,6 +19,7 @@ class HomeTabPage extends StatefulWidget {
     super.key,
     this.search,
     this.hideAppBar = kIsWeb,
+    this.defaultLibraries,
   });
 
   @override
@@ -24,10 +27,18 @@ class HomeTabPage extends StatefulWidget {
 }
 
 class _HomeTabPageState extends State<HomeTabPage> {
-  final query = Query(
-    queryFn: () => BaseConnectionService.getLibraries(),
+  late final query = Query(
+    queryFn: () {
+      if (widget.defaultLibraries != null) {
+        return Future.value(
+          widget.defaultLibraries,
+        );
+      }
+
+      return BaseConnectionService.getLibraries();
+    },
     key: [
-      "home",
+      "home${widget.defaultLibraries?.data.length ?? 0}${widget.search ?? ""}",
     ],
   );
 
@@ -54,128 +65,111 @@ class _HomeTabPageState extends State<HomeTabPage> {
                 style: GoogleFonts.montserrat(),
               ),
             ),
-      body: QueryBuilder(
-        query: query,
-        builder: (context, state) {
-          if (QueryStatus.error == state.status) {
-            return _buildError(state.error);
-          }
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await query.refetch();
+          return;
+        },
+        child: QueryBuilder(
+          query: query,
+          builder: (context, state) {
+            if (QueryStatus.error == state.status) {
+              return _buildError(state.error);
+            }
 
-          final data = state.data;
+            final data = state.data;
 
-          if (data == null) {
-            return const Text("Loading");
-          }
+            if (data == null) {
+              return const Text("Loading");
+            }
 
-          if (data.data.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.only(
-                bottom: 24,
-                left: 12,
-                right: 12,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: GettingStartedScreen(
-                  onCallback: () {
-                    query.refetch();
-                  },
+            if (data.data.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 24,
+                  left: 12,
+                  right: 12,
                 ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: GettingStartedScreen(
+                    onCallback: () {
+                      query.refetch();
+                    },
+                  ),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 8.0,
+                horizontal: 16.0,
               ),
-            );
-          }
+              child: ListView.builder(
+                itemBuilder: (item, index) {
+                  final item = data.data[index];
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 8.0,
-              horizontal: 16.0,
-            ),
-            child: ListView.builder(
-              itemBuilder: (item, index) {
-                final item = data.data[index];
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            item.title,
-                            style: theme.textTheme.bodyLarge,
-                          ),
-                          const Spacer(),
-                          SizedBox(
-                            height: 30,
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) {
-                                      return Scaffold(
-                                        appBar: AppBar(
-                                          title: Text(item.title),
-                                        ),
-                                        body: SizedBox(
-                                          height: MediaQuery.of(context)
-                                                  .size
-                                                  .height -
-                                              96,
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(10.0),
-                                            child: RenderLibraryList(
-                                              item: item,
-                                              isGrid: true,
-                                              filters: [
-                                                if ((widget.search ?? "")
-                                                        .trim() !=
-                                                    "")
-                                                  ConnectionFilterItem(
-                                                    title: "search",
-                                                    value: widget.search,
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              item.title,
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                            const Spacer(),
+                            SizedBox(
+                              height: 30,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return ShowMorePage(
+                                          item: item,
+                                          search: widget.search,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "Show more",
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: Colors.white70,
                                   ),
-                                );
-                              },
-                              child: Text(
-                                "Show more",
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: Colors.white70,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 8,
-                      ),
-                      RenderLibraryList(
-                        item: item,
-                        filters: [
-                          if ((widget.search ?? "").trim() != "")
-                            ConnectionFilterItem(
-                              title: "search",
-                              value: widget.search,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-              itemCount: data.data.length,
-            ),
-          );
-        },
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 8,
+                        ),
+                        RenderLibraryList(
+                          item: item,
+                          filters: [
+                            if ((widget.search ?? "").trim() != "")
+                              ConnectionFilterItem(
+                                title: "search",
+                                value: widget.search,
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                itemCount: data.data.length,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -217,6 +211,32 @@ class _HomeTabPageState extends State<HomeTabPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ShowMorePage extends StatelessWidget {
+  final LibraryRecord item;
+  final String? search;
+
+  const ShowMorePage({
+    super.key,
+    required this.item,
+    required this.search,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RenderLibraryList(
+      item: item,
+      isGrid: true,
+      filters: [
+        if ((search ?? "").trim() != "")
+          ConnectionFilterItem(
+            title: "search",
+            value: search,
+          ),
+      ],
     );
   }
 }

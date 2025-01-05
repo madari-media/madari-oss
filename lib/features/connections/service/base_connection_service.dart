@@ -32,7 +32,6 @@ abstract class BaseConnectionService {
     Connection item,
     ConnectionTypeRecord type,
   ) {
-    print(type);
     switch (type.type) {
       case "stremio_addons":
         return StremioConnectionService(
@@ -91,8 +90,12 @@ abstract class BaseConnectionService {
 
   Future<LibraryItem?> getItemById(LibraryItem id);
 
-  Stream<List<StreamList>> getStreams(LibraryRecord library, LibraryItem id,
-      {String? season, String? episode});
+  Stream<List<StreamList>> getStreams(
+    LibraryRecord library,
+    LibraryItem id, {
+    String? season,
+    String? episode,
+  });
 
   BaseConnectionService({
     required this.connectionId,

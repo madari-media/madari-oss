@@ -15,6 +15,8 @@ import './base_connection_service.dart';
 
 part 'stremio_connection_service.g.dart';
 
+final Map<String, String> manifestCache = {};
+
 class StremioConnectionService extends BaseConnectionService {
   final StremioConfig config;
 
@@ -155,8 +157,15 @@ class StremioConnectionService extends BaseConnectionService {
   }
 
   Future<StremioManifest> _getManifest(String url) async {
-    final result = await http.get(Uri.parse(url));
-    final body = jsonDecode(result.body);
+    final String result;
+    if (manifestCache.containsKey(url)) {
+      result = manifestCache[url]!;
+    } else {
+      result = (await http.get(Uri.parse(url))).body;
+      manifestCache[url] = result;
+    }
+
+    final body = jsonDecode(result);
     final resultFinal = StremioManifest.fromJson(body);
     return resultFinal;
   }
@@ -169,7 +178,49 @@ class StremioConnectionService extends BaseConnectionService {
 
   @override
   Future<List<ConnectionFilter<T>>> getFilters<T>(LibraryRecord library) async {
-    return [];
+    final configItems = getConfig(library.config);
+    List<ConnectionFilter<T>> filters = [];
+
+    try {
+      for (final addon in configItems) {
+        final addonManifest = await _getManifest(addon.addon);
+
+        if ((addonManifest.catalogs?.isEmpty ?? true) == true) {
+          continue;
+        }
+
+        final catalogs = addonManifest.catalogs!.where((item) {
+          return item.id == addon.item.id && item.type == addon.item.type;
+        }).toList();
+
+        for (final catalog in catalogs) {
+          if (catalog.extra == null) {
+            continue;
+          }
+          for (final extraItem in catalog.extra!) {
+            if (extraItem.options == null ||
+                extraItem.options?.isEmpty == true) {
+              filters.add(
+                ConnectionFilter<T>(
+                  title: extraItem.name,
+                  type: ConnectionFilterType.text,
+                ),
+              );
+            } else {
+              filters.add(
+                ConnectionFilter<T>(
+                  title: extraItem.name,
+                  type: ConnectionFilterType.options,
+                  values: extraItem.options?.whereType<T>().toList(),
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    return filters;
   }
 
   @override

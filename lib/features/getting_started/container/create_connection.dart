@@ -73,11 +73,13 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
     }
   }
 
-  Future<void> _validateAddonUrl(String url) async {
+  Future<void> _validateAddonUrl(String url_) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    final url = url_.replaceFirst("stremio://", "https://");
 
     try {
       final response = await http.get(

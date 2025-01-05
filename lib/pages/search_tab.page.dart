@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../engine/engine.dart';
+import '../features/connections/service/base_connection_service.dart';
+import '../features/connections/types/base/base.dart';
 import 'home_tab.page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -15,15 +18,63 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'All';
   Timer? _debounceTimer;
   bool _isSearchFocused = false;
-  final List<String> _filterOptions = ['All', 'Videos', 'PDFs', 'Images'];
   String _debouncedSearchTerm = '';
+  LibraryRecordResponse? searchLibrariesList;
 
   @override
   void initState() {
     super.initState();
+
+    loadLibrariesWhichSupportSearch();
+  }
+
+  loadLibrariesWhichSupportSearch() async {
+    final library =
+        await AppEngine.engine.pb.collection("library").getFullList();
+
+    final record = library
+        .map(
+      (item) => LibraryRecord.fromRecord(item),
+    )
+        .where((item) {
+      return item.connectionType == "stremio_addons";
+    }).toList();
+
+    final List<LibraryRecord> records = [];
+
+    for (final item in record) {
+      final result =
+          await BaseConnectionService.connectionByIdRaw(item.connection);
+
+      final service = BaseConnectionService.connectionById(result);
+
+      final filters = await service.getFilters(item);
+
+      final hasFilter = filters.where((item) {
+        return item.title == "search";
+      }).isNotEmpty;
+
+      if (hasFilter) {
+        records.add(item);
+        if (mounted) {
+          searchLibrariesList = LibraryRecordResponse(
+            data: records,
+          );
+
+          setState(() {});
+        }
+      }
+    }
+
+    searchLibrariesList = LibraryRecordResponse(
+      data: records,
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -46,7 +97,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size(double.infinity, 114),
+        preferredSize: const Size(double.infinity, 76),
         child: Container(
           color: Colors.grey[900],
           padding: const EdgeInsets.symmetric(
@@ -96,45 +147,30 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 32,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _filterOptions.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final filter = _filterOptions[index];
-                      final isSelected = _selectedFilter == filter;
-                      return FilterChip(
-                        label: Text(
-                          filter,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        selected: isSelected,
-                        showCheckmark: false,
-                        onSelected: (bool selected) {
-                          setState(() => _selectedFilter = filter);
-                        },
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ),
-      body: _debouncedSearchTerm.isEmpty
-          ? Center(
-              child: _buildEmptyState(),
-            )
-          : HomeTabPage(
-              hideAppBar: true,
-              search: _debouncedSearchTerm,
-            ),
+      body: RefreshIndicator(
+        child: _buildBody(),
+        onRefresh: () {
+          return loadLibrariesWhichSupportSearch();
+        },
+      ),
     );
+  }
+
+  Widget _buildBody() {
+    return _debouncedSearchTerm.isEmpty
+        ? Center(
+            child: _buildEmptyState(),
+          )
+        : HomeTabPage(
+            hideAppBar: true,
+            search: _debouncedSearchTerm,
+            defaultLibraries: searchLibrariesList,
+          );
   }
 
   Widget _buildEmptyState() {
@@ -157,85 +193,6 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSearchResults() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: MediaQuery.of(context).size.width > 1200
-              ? 5
-              : MediaQuery.of(context).size.width > 800
-                  ? 4
-                  : MediaQuery.of(context).size.width > 600
-                      ? 3
-                      : 2,
-          childAspectRatio: 16 / 9,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          mainAxisExtent: 200,
-        ),
-        itemBuilder: (context, index) => _buildResultCard(index),
-        itemCount: 20,
-      ),
-    );
-  }
-
-  Widget _buildResultCard(int index) {
-    return InkWell(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Center(
-                  child: Icon(
-                    _selectedFilter == 'PDFs'
-                        ? Icons.picture_as_pdf
-                        : _selectedFilter == 'Videos'
-                            ? Icons.play_circle_filled
-                            : Icons.image,
-                    size: 40,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Title ${index + 1}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '2024 • Category',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
       ),
     );
   }

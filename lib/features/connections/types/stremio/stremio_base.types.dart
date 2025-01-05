@@ -105,10 +105,12 @@ class StremioManifestCatalog {
   String type;
   String id;
   String? name;
+  final List<StremioManifestCatalogExtra>? extra;
 
   StremioManifestCatalog({
     required this.id,
     required this.type,
+    this.extra,
     this.name,
   });
 
@@ -119,6 +121,30 @@ class StremioManifestCatalog {
       _$StremioManifestCatalogFromJson(json);
 
   Map<String, dynamic> toJson() => _$StremioManifestCatalogToJson(this);
+}
+
+@JsonSerializable()
+class StremioManifestCatalogExtra {
+  final String name;
+  final List<dynamic>? options;
+
+  StremioManifestCatalogExtra({
+    required this.name,
+    required this.options,
+  });
+
+  factory StremioManifestCatalogExtra.fromJson(Map<String, dynamic> json) {
+    try {
+      return _$StremioManifestCatalogExtraFromJson(json);
+    } catch (e) {
+      return StremioManifestCatalogExtra(
+        name: "Unable to parse",
+        options: [],
+      );
+    }
+  }
+
+  Map<String, dynamic> toJson() => _$StremioManifestCatalogExtraToJson(this);
 }
 
 @JsonSerializable()
