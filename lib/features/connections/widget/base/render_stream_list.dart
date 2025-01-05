@@ -269,7 +269,12 @@ class _RenderStreamListState extends State<RenderStreamList> {
 
         return ListTile(
           title: Text(item.title),
-          subtitle: item.description == null ? null : Text(item.description!),
+          subtitle: item.description == null && item.streamSource == null
+              ? null
+              : Text(
+                  "${item.description ?? ""}\n---\n${item.streamSource?.title}"
+                      .trim(),
+                ),
           trailing: (item.source is MediaURLSource)
               ? _buildDownloadButton(
                   context,
