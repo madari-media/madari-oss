@@ -272,7 +272,7 @@ class _RenderStreamListState extends State<RenderStreamList> {
           subtitle: item.description == null && item.streamSource == null
               ? null
               : Text(
-                  "${item.description ?? ""}\n---\n${item.streamSource?.title}"
+                  "${item.description ?? ""}\n---\n${item.streamSource?.title ?? ""}"
                       .trim(),
                 ),
           trailing: (item.source is MediaURLSource)
