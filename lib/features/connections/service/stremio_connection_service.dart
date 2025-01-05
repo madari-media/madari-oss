@@ -32,13 +32,20 @@ class StremioConnectionService extends BaseConnectionService {
     for (final addon in config.addons) {
       final manifest = await _getManifest(addon);
 
+      print(manifest);
+
+      print(addon);
+
       if (manifest.resources == null) {
         continue;
       }
 
+      List<String> idPrefixes = [];
+
       bool isMeta = false;
       for (final item in manifest.resources!) {
         if (item.name == "meta") {
+          idPrefixes.addAll((item.idPrefix ?? []) + (item.idPrefixes ?? []));
           isMeta = true;
           break;
         }
@@ -48,10 +55,10 @@ class StremioConnectionService extends BaseConnectionService {
         continue;
       }
 
-      final ids = manifest.idPrefixes
-          ?.firstWhere((item) => id.id.startsWith(item), orElse: () => "");
+      final ids = ((manifest.idPrefixes ?? []) + idPrefixes)
+          .firstWhere((item) => id.id.startsWith(item), orElse: () => "");
 
-      if (ids == null) {
+      if (ids.isEmpty) {
         continue;
       }
 
@@ -60,6 +67,8 @@ class StremioConnectionService extends BaseConnectionService {
           "${_getAddonBaseURL(addon)}/meta/${(id as Meta).type}/${id.id}.json",
         ),
       );
+
+      print("${_getAddonBaseURL(addon)}/meta/${(id).type}/${id.id}.json");
 
       return StreamMetaResponse.fromJson(jsonDecode(result.body)).meta;
     }
@@ -303,7 +312,9 @@ class StremioConnectionService extends BaseConnectionService {
       return false;
     }
 
-    final idPrefixes = resource.idPrefixes ?? addonManifest.idPrefixes;
+    final idPrefixes =
+        resource.idPrefixes ?? addonManifest.idPrefixes ?? resource.idPrefix;
+
     final types = resource.types ?? addonManifest.types;
 
     if (types == null || !types.contains(meta.type)) {
@@ -328,9 +339,10 @@ class StremioConnectionService extends BaseConnectionService {
     String? episode,
     StremioManifest addonManifest,
   ) {
-    String streamTitle =
-        (item.name != null ? "${item.name} ${item.title}" : item.title) ??
-            "No title";
+    String streamTitle = (item.name != null
+            ? "${(item.name ?? "")} ${(item.title ?? "")}"
+            : item.title) ??
+        "No title";
 
     try {
       streamTitle = utf8.decode(streamTitle.runes.toList());

@@ -39,11 +39,13 @@ class ResourceObject {
   final String name;
   final List<String>? types;
   final List<String>? idPrefixes;
+  final List<String>? idPrefix;
 
   ResourceObject({
     required this.name,
     this.types,
     this.idPrefixes,
+    this.idPrefix,
   });
 
   factory ResourceObject.fromJson(Map<String, dynamic> json) =>
@@ -251,7 +253,7 @@ class Meta extends LibraryItem {
   @JsonKey(name: "slug")
   final String? slug;
   @JsonKey(name: "year")
-  final String? year;
+  final dynamic year;
   @JsonKey(name: "status")
   final String? status;
   @JsonKey(name: "tvdb_id")
@@ -637,7 +639,7 @@ class Video {
   @JsonKey(name: "season")
   final int season;
   @JsonKey(name: "number")
-  final int number;
+  final int? number;
   @JsonKey(name: "firstAired")
   final DateTime? firstAired;
   @JsonKey(name: "tvdb_id")

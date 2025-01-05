@@ -236,7 +236,7 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                                     children: [
                                       if (item!.year != null)
                                         Chip(
-                                          label: Text(item!.year!),
+                                          label: Text("${item!.year ?? ""}"),
                                           backgroundColor: Colors.white24,
                                           labelStyle: const TextStyle(
                                               color: Colors.white),
