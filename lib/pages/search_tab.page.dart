@@ -45,27 +45,29 @@ class _SearchPageState extends State<SearchPage> {
     final List<LibraryRecord> records = [];
 
     for (final item in record) {
-      final result =
-          await BaseConnectionService.connectionByIdRaw(item.connection);
+      Future.microtask(() async {
+        final result =
+            await BaseConnectionService.connectionByIdRaw(item.connection);
 
-      final service = BaseConnectionService.connectionById(result);
+        final service = BaseConnectionService.connectionById(result);
 
-      final filters = await service.getFilters(item);
+        final filters = await service.getFilters(item);
 
-      final hasFilter = filters.where((item) {
-        return item.title == "search";
-      }).isNotEmpty;
+        final hasFilter = filters.where((item) {
+          return item.title == "search";
+        }).isNotEmpty;
 
-      if (hasFilter) {
-        records.add(item);
-        if (mounted) {
-          searchLibrariesList = LibraryRecordResponse(
-            data: records,
-          );
+        if (hasFilter) {
+          records.add(item);
+          if (mounted) {
+            searchLibrariesList = LibraryRecordResponse(
+              data: records,
+            );
 
-          setState(() {});
+            setState(() {});
+          }
         }
-      }
+      });
     }
 
     searchLibrariesList = LibraryRecordResponse(
