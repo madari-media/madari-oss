@@ -32,10 +32,6 @@ class StremioConnectionService extends BaseConnectionService {
     for (final addon in config.addons) {
       final manifest = await _getManifest(addon);
 
-      print(manifest);
-
-      print(addon);
-
       if (manifest.resources == null) {
         continue;
       }
@@ -261,6 +257,8 @@ class StremioConnectionService extends BaseConnectionService {
           final url =
               "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
 
+          print(url);
+
           final result = await http.get(Uri.parse(url), headers: {});
 
           if (result.statusCode == 404) {
@@ -291,7 +289,8 @@ class StremioConnectionService extends BaseConnectionService {
             callback(streams, null);
           }
         }
-      }).catchError((error) {
+      }).catchError((error, stacktrace) {
+        print(stacktrace);
         if (callback != null) callback(null, error);
       });
 
@@ -321,6 +320,10 @@ class StremioConnectionService extends BaseConnectionService {
       return false;
     }
 
+    if ((idPrefixes ?? []).isEmpty == true) {
+      return true;
+    }
+
     final hasIdPrefix = (idPrefixes ?? []).where(
       (item) => meta.id.startsWith(item),
     );
@@ -348,11 +351,15 @@ class StremioConnectionService extends BaseConnectionService {
       streamTitle = utf8.decode(streamTitle.runes.toList());
     } catch (e) {}
 
-    final streamDescription = item.description != null
-        ? utf8.decode(
-            (item.description!).runes.toList(),
-          )
-        : null;
+    String? streamDescription = item.description;
+
+    try {
+      streamDescription = item.description != null
+          ? utf8.decode(
+              (item.description!).runes.toList(),
+            )
+          : null;
+    } catch (e) {}
 
     String title = meta.name ?? item.title ?? "No title";
 
