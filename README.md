@@ -36,3 +36,16 @@ flutter run
 ## Contributing
 Contributions, issues, and feature requests are welcome!  
 Feel free to fork the repository and submit a pull request.
+
+# Legal Disclaimer
+
+This application is designed to be an open source media player that can process URLs and add-ons.
+
+The developers of Madari:
+
+    Do not host, develop, or distribute any content
+    Do not endorse or promote copyright infringement or illegal activities
+    Are not responsible for third-party add-ons or content accessed through them
+    Expect users to respect intellectual property rights and their local laws
+
+Users are solely responsible for the add-ons they install and content they access through the application.
