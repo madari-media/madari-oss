@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/pages/library_view.page.dart';
 import 'package:madari_client/pages/stremio_item.page.dart';
+import 'package:matomo_tracker/matomo_tracker.dart';
 
 import 'features/connections/types/stremio/stremio_base.types.dart';
 import 'pages/download.page.dart';
@@ -20,6 +21,9 @@ GoRouter createRouter() {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
+    observers: [
+      matomoObserver,
+    ],
     refreshListenable: ValueNotifier(AppEngine.engine.pb.authStore.onChange),
     redirect: (context, state) => _routeGuard(context, state),
     routes: [

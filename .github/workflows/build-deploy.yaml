@@ -37,7 +37,7 @@ jobs:
 
       - run: |
           cd build\windows\x64\runner\Release
-          Compress-Archive -Path * -DestinationPath WindowsRelease.zip
+          Compress-Archive -Path * -DestinationPath WindowsRelease.zip -CompressionLevel Optimal
           mkdir build
           move WindowsRelease.zip build
         shell: pwsh

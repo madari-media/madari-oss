@@ -12,6 +12,7 @@ import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/doc_viewer/container/doc_viewer.dart';
 import 'package:madari_client/features/doc_viewer/types/doc_source.dart';
 import 'package:madari_client/routes.dart';
+import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as path;
 import 'package:window_manager/window_manager.dart';
@@ -27,6 +28,13 @@ void main() async {
   } catch (e) {
     print("Unable");
   }
+
+  try {
+    await MatomoTracker.instance.initialize(
+      siteId: "3",
+      url: 'https://user.madari.media/matomo.php',
+    );
+  } catch (e) {}
 
   try {
     CachedQuery.instance.configFlutter(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:madari_client/routes.dart';
+import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'engine/engine.dart';
@@ -15,6 +16,13 @@ void main() async {
 
   final pb = AppEngine.engine.pb;
   final userCollection = pb.collection("users");
+
+  try {
+    await MatomoTracker.instance.initialize(
+      siteId: "3",
+      url: 'https://user.madari.media/matomo.php',
+    );
+  } catch (e) {}
 
   if (pb.authStore.isValid) {
     try {
