@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:madari_client/engine/library.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
+import 'package:madari_client/features/trakt/containers/up_next.container.dart';
+import 'package:madari_client/features/trakt/service/trakt.service.dart';
 
 import '../features/connections/widget/base/render_library_list.dart';
 import '../features/getting_started/container/getting_started.dart';
+import '../utils/auth_refresh.dart';
 
 class HomeTabPage extends StatefulWidget {
   final String? search;
@@ -28,14 +31,16 @@ class HomeTabPage extends StatefulWidget {
 
 class _HomeTabPageState extends State<HomeTabPage> {
   late final query = Query(
-    queryFn: () {
+    queryFn: () async {
+      await TraktService.ensureInitialized();
+
       if (widget.defaultLibraries != null) {
         return Future.value(
           widget.defaultLibraries,
         );
       }
 
-      return BaseConnectionService.getLibraries();
+      return await BaseConnectionService.getLibraries();
     },
     key: [
       "home${widget.defaultLibraries?.data.length ?? 0}${widget.search ?? ""}",
@@ -49,6 +54,20 @@ class _HomeTabPageState extends State<HomeTabPage> {
     });
 
     super.initState();
+
+    traktLibraries = getTraktLibraries();
+  }
+
+  List<String> traktLibraries = [];
+
+  final traktService = TraktService();
+
+  List<String> getTraktLibraries() {
+    if (widget.defaultLibraries?.data.isNotEmpty == true) {
+      return [];
+    }
+
+    return traktService.getHomePageContent();
   }
 
   @override
@@ -67,7 +86,11 @@ class _HomeTabPageState extends State<HomeTabPage> {
             ),
       body: RefreshIndicator(
         onRefresh: () async {
+          await refreshAuth();
           await query.refetch();
+          setState(() {
+            traktLibraries = getTraktLibraries();
+          });
           return;
         },
         child: QueryBuilder(
@@ -93,8 +116,13 @@ class _HomeTabPageState extends State<HomeTabPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: GettingStartedScreen(
-                    onCallback: () {
+                    onCallback: () async {
+                      await refreshAuth();
+
                       query.refetch();
+                      setState(() {
+                        traktLibraries = getTraktLibraries();
+                      });
                     },
                   ),
                 ),
@@ -108,7 +136,15 @@ class _HomeTabPageState extends State<HomeTabPage> {
               ),
               child: ListView.builder(
                 itemBuilder: (item, index) {
-                  final item = data.data[index];
+                  if (traktLibraries.length > index) {
+                    final category = traktLibraries[index];
+
+                    return TraktContainer(
+                      loadId: category,
+                    );
+                  }
+
+                  final item = data.data[index - traktLibraries.length];
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 6),
@@ -165,7 +201,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
                     ),
                   );
                 },
-                itemCount: data.data.length,
+                itemCount: data.data.length + traktLibraries.length,
               ),
             );
           },

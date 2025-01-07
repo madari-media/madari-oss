@@ -10,8 +10,10 @@ import '../types/base/base.dart';
 import '../widget/stremio/stremio_create.dart';
 
 abstract class BaseConnectionService {
-  Widget renderCard(LibraryRecord library, LibraryItem item, String heroPrefix);
-  Widget renderList(LibraryRecord library, LibraryItem item, String heroPrefix);
+  Widget renderCard(LibraryItem item, String heroPrefix);
+  Widget renderList(LibraryItem item, String heroPrefix);
+
+  static final Map<String, RecordModel> _item = {};
 
   final String connectionId;
 
@@ -46,14 +48,21 @@ abstract class BaseConnectionService {
   static Future<ConnectionResponse> connectionByIdRaw(
     String connectionId,
   ) async {
-    final result = await AppEngine.engine.pb
-        .collection("connection")
-        .getOne(connectionId, expand: "type");
+    RecordModel model_;
+
+    if (_item.containsKey(connectionId)) {
+      model_ = _item[connectionId]!;
+    } else {
+      model_ = await AppEngine.engine.pb
+          .collection("connection")
+          .getOne(connectionId, expand: "type");
+      _item[connectionId] = model_;
+    }
 
     return ConnectionResponse(
-      connection: Connection.fromRecord(result),
+      connection: Connection.fromRecord(model_),
       connectionTypeRecord: ConnectionTypeRecord.fromRecord(
-        result.get<RecordModel>("expand.type"),
+        model_.get<RecordModel>("expand.type"),
       ),
     );
   }
@@ -84,6 +93,10 @@ abstract class BaseConnectionService {
     String? cursor,
   });
 
+  Future<List<LibraryItem>> getBulkItem(
+    List<LibraryItem> ids,
+  );
+
   Future<List<ConnectionFilter<T>>> getFilters<T>(
     LibraryRecord library,
   );
@@ -91,7 +104,6 @@ abstract class BaseConnectionService {
   Future<LibraryItem?> getItemById(LibraryItem id);
 
   Future<void> getStreams(
-    LibraryRecord library,
     LibraryItem id, {
     String? season,
     String? episode,
@@ -190,6 +202,10 @@ class ConnectionFilterItem {
 
 abstract class LibraryItem extends Jsonable {
   late final String id;
+
+  LibraryItem({
+    required this.id,
+  });
 
   @override
   Map<String, dynamic> toJson();

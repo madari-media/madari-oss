@@ -37,7 +37,7 @@ flutter run
 Contributions, issues, and feature requests are welcome!  
 Feel free to fork the repository and submit a pull request.
 
-# Legal Disclaimer
+## Legal Disclaimer
 
 This application is designed to be an open source media player that can process URLs and add-ons.
 

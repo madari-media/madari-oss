@@ -97,12 +97,12 @@ class _ConfigureNeoConnectionState extends State<ConfigureNeoConnection> {
             TextFormField(
               controller: _usernameController,
               decoration: const InputDecoration(
-                labelText: 'Username',
+                labelText: 'Email',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter username';
+                  return 'Please enter email';
                 }
                 return null;
               },

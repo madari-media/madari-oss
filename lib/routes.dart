@@ -5,7 +5,6 @@ import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/pages/library_view.page.dart';
 import 'package:madari_client/pages/stremio_item.page.dart';
 
-import 'features/connections/types/stremio/stremio_base.types.dart';
 import 'pages/download.page.dart';
 import 'pages/home.page.dart';
 import 'pages/home_tab.page.dart';
@@ -86,18 +85,19 @@ GoRouter createRouter() {
         ],
       ),
       GoRoute(
-        path: "/info/stremio/:connection/:library/:type/:id",
+        path: "/info/stremio/:connection/:type/:id",
         builder: (context, state) {
           final params = state.pathParameters;
-          final meta = state.extra as Meta?;
+          final meta = state.extra as Map<String, dynamic>?;
 
           return StremioItemPage(
             hero: state.uri.queryParameters["hero"],
             type: params["type"]!,
             id: params["id"]!,
             connection: params["connection"]!,
-            meta: meta,
-            library: params["library"]!,
+            meta: meta?.containsKey("meta") == true ? meta!['meta'] : null,
+            service:
+                meta?.containsKey("service") == true ? meta!['service'] : null,
           );
         },
       ),

@@ -162,6 +162,9 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                         autofocus: true,
                         controller: _usernameController,
                         hintText: "Name",
+                        autoFillHints: [
+                          AutofillHints.name,
+                        ],
                         prefixIcon: Icons.drive_file_rename_outline,
                       ),
                       const SizedBox(height: 16),
@@ -172,6 +175,9 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                         controller: _emailController,
                         hintText: "Email",
                         prefixIcon: Icons.email_outlined,
+                        autoFillHints: [
+                          AutofillHints.email,
+                        ],
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your email';
@@ -186,12 +192,14 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                       const SizedBox(height: 16),
 
                       _buildTextField(
-                        autofocus: true,
-                        obscureText: true,
-                        controller: _passwordController,
-                        hintText: "Password",
-                        prefixIcon: Icons.password,
-                      ),
+                          autofocus: true,
+                          obscureText: true,
+                          controller: _passwordController,
+                          hintText: "Password",
+                          prefixIcon: Icons.password,
+                          autoFillHints: [
+                            AutofillHints.password,
+                          ]),
 
                       const SizedBox(height: 16),
 
@@ -200,6 +208,9 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                         obscureText: true,
                         controller: _confirmPasswordController,
                         hintText: "Confirm Password",
+                        autoFillHints: [
+                          AutofillHints.password,
+                        ],
                         prefixIcon: Icons.password,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -269,6 +280,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     Widget? suffixIcon,
     bool autofocus = false,
     final FormFieldValidator? validator,
+    List<String> autoFillHints = const [],
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -283,10 +295,13 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         controller: controller,
         obscureText: obscureText,
         autofocus: autofocus,
+        textInputAction: TextInputAction.next,
+        onEditingComplete: () => FocusScope.of(context).nextFocus(),
         style: GoogleFonts.exo2(
           color: Colors.white,
           fontSize: 15,
         ),
+        autofillHints: autoFillHints,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.exo2(

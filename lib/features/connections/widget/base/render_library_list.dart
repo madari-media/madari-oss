@@ -55,7 +55,7 @@ class _RenderLibraryListState extends State<RenderLibraryList> {
           );
 
           return SizedBox(
-            height: _getListHeight(context),
+            height: getListHeight(context),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Container(
@@ -135,7 +135,6 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     query = getQuery();
   }
 
@@ -143,7 +142,6 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-
     loadFilters();
   }
 
@@ -273,8 +271,7 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   }
 
   _buildBody() {
-    final itemWidth = _getItemWidth(context);
-    final listHeight = _getListHeight(context);
+    final listHeight = getListHeight(context);
 
     if (isUnsupported) {
       return SizedBox(
@@ -288,7 +285,9 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
       child: InfiniteQueryBuilder(
         query: query,
         builder: (context, data, query) {
-          final items = data.data?.expand((e) => e).toList() ?? [];
+          final items = (data.data?.expand((e) => e).toList() ?? [])
+              .whereType<LibraryItem>()
+              .toList();
 
           if (data.status == QueryStatus.loading && items.isEmpty) {
             return const CustomScrollView(
@@ -300,96 +299,15 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
             );
           }
 
-          return CustomScrollView(
-            controller: _scrollController,
-            physics:
-                widget.isGrid ? null : const NeverScrollableScrollPhysics(),
-            slivers: [
-              if (data.status == QueryStatus.error)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: listHeight,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Something went wrong while loading the library \n${data.error}",
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            TextButton.icon(
-                              label: const Text("Retry"),
-                              onPressed: () {
-                                query.refetch();
-                              },
-                              icon: const Icon(
-                                Icons.refresh,
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.isGrid)
-                SliverGrid.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: getGridResponsiveColumnCount(context),
-                    mainAxisSpacing: getGridResponsiveSpacing(context),
-                    crossAxisSpacing: getGridResponsiveSpacing(context),
-                    childAspectRatio: 2 / 3,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (ctx, index) {
-                    final item = items[index];
-
-                    return service.renderCard(
-                      widget.item,
-                      item,
-                      "${index}_${widget.item.id}",
-                    );
-                  },
-                ),
-              if (!widget.isGrid)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: listHeight,
-                    child: ListView.builder(
-                      itemBuilder: (ctx, index) {
-                        final item = items[index];
-
-                        return SizedBox(
-                          width: itemWidth,
-                          child: service.renderCard(
-                            widget.item,
-                            item,
-                            "${index}_${widget.item.id}",
-                          ),
-                        );
-                      },
-                      scrollDirection: Axis.horizontal,
-                      itemCount: items.length,
-                    ),
-                  ),
-                ),
-              SliverPadding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).padding.bottom,
-                ),
-              ),
-            ],
+          return RenderListItems(
+            hasError: data.status == QueryStatus.error,
+            onRefresh: () {
+              query.refetch();
+            },
+            isGrid: widget.isGrid,
+            items: items,
+            heroPrefix: widget.item.id,
+            service: service,
           );
         },
       ),
@@ -397,15 +315,146 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   }
 }
 
-class SpinnerCards extends StatelessWidget {
-  const SpinnerCards({
+class RenderListItems extends StatelessWidget {
+  final ScrollController? controller;
+  final ScrollController? itemScrollController;
+  final bool isGrid;
+  final bool hasError;
+  final VoidCallback? onRefresh;
+  final BaseConnectionService service;
+  final List<LibraryItem> items;
+  final String heroPrefix;
+  final dynamic error;
+  final bool isWide;
+
+  const RenderListItems({
     super.key,
+    this.controller,
+    this.isGrid = false,
+    this.hasError = false,
+    this.onRefresh,
+    required this.items,
+    required this.service,
+    required this.heroPrefix,
+    this.itemScrollController,
+    this.error,
+    this.isWide = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final itemWidth = _getItemWidth(context);
-    final itemHeight = _getListHeight(context);
+    final listHeight = getListHeight(context);
+    final itemWidth = getItemWidth(
+      context,
+      isWide: isWide,
+    );
+
+    return CustomScrollView(
+      controller: controller,
+      physics: isGrid ? null : const NeverScrollableScrollPhysics(),
+      slivers: [
+        if (hasError)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: listHeight,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Something went wrong while loading the library \n$error",
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      const SizedBox(
+                        height: 10,
+                      ),
+                      TextButton.icon(
+                        label: const Text("Retry"),
+                        onPressed: onRefresh,
+                        icon: const Icon(
+                          Icons.refresh,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (isGrid)
+          SliverGrid.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: getGridResponsiveColumnCount(context),
+              mainAxisSpacing: getGridResponsiveSpacing(context),
+              crossAxisSpacing: getGridResponsiveSpacing(context),
+              childAspectRatio: 2 / 3,
+            ),
+            itemCount: items.length,
+            itemBuilder: (ctx, index) {
+              final item = items[index];
+
+              return service.renderCard(
+                item,
+                "${index}_$heroPrefix",
+              );
+            },
+          ),
+        if (!isGrid)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: listHeight,
+              child: ListView.builder(
+                itemBuilder: (ctx, index) {
+                  final item = items[index];
+
+                  return SizedBox(
+                    width: itemWidth,
+                    child: Container(
+                      decoration: const BoxDecoration(),
+                      child: service.renderCard(
+                        item,
+                        "${index}_${heroPrefix}",
+                      ),
+                    ),
+                  );
+                },
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SpinnerCards extends StatelessWidget {
+  final bool isWide;
+  const SpinnerCards({
+    super.key,
+    this.isWide = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final itemWidth = getItemWidth(
+      context,
+      isWide: isWide,
+    );
+    final itemHeight = getListHeight(context);
 
     return SizedBox(
       height: itemHeight,
@@ -438,12 +487,14 @@ class SpinnerCards extends StatelessWidget {
   }
 }
 
-double _getItemWidth(BuildContext context) {
+double getItemWidth(BuildContext context, {bool isWide = false}) {
   double screenWidth = MediaQuery.of(context).size.width;
-  return screenWidth > 800 ? 200.0 : 120.0;
+  return screenWidth > 800
+      ? (isWide ? 400.0 : 200.0)
+      : (isWide ? 280.0 : 120.0);
 }
 
-double _getListHeight(BuildContext context) {
+double getListHeight(BuildContext context) {
   double screenWidth = MediaQuery.of(context).size.width;
   return screenWidth > 800 ? 300.0 : 180.0;
 }

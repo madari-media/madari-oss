@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_query/cached_query.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_annotation/json_annotation.dart';
@@ -29,47 +30,71 @@ class StremioConnectionService extends BaseConnectionService {
 
   @override
   Future<LibraryItem?> getItemById(LibraryItem id) async {
-    for (final addon in config.addons) {
-      final manifest = await _getManifest(addon);
+    return Query<LibraryItem?>(
+            key: "meta_${id.id}",
+            config: QueryConfig(
+              cacheDuration: const Duration(days: 30),
+              refetchDuration: (id as Meta).type == "movie"
+                  ? const Duration(days: 30)
+                  : const Duration(
+                      minutes: 10,
+                    ),
+            ),
+            queryFn: () async {
+              for (final addon in config.addons) {
+                final manifest = await _getManifest(addon);
 
-      if (manifest.resources == null) {
-        continue;
-      }
+                if (manifest.resources == null) {
+                  continue;
+                }
 
-      List<String> idPrefixes = [];
+                List<String> idPrefixes = [];
 
-      bool isMeta = false;
-      for (final item in manifest.resources!) {
-        if (item.name == "meta") {
-          idPrefixes.addAll((item.idPrefix ?? []) + (item.idPrefixes ?? []));
-          isMeta = true;
-          break;
-        }
-      }
+                bool isMeta = false;
+                for (final item in manifest.resources!) {
+                  if (item.name == "meta") {
+                    idPrefixes.addAll(
+                        (item.idPrefix ?? []) + (item.idPrefixes ?? []));
+                    isMeta = true;
+                    break;
+                  }
+                }
 
-      if (isMeta == false) {
-        continue;
-      }
+                if (isMeta == false) {
+                  continue;
+                }
 
-      final ids = ((manifest.idPrefixes ?? []) + idPrefixes)
-          .firstWhere((item) => id.id.startsWith(item), orElse: () => "");
+                final ids = ((manifest.idPrefixes ?? []) + idPrefixes)
+                    .firstWhere((item) => id.id.startsWith(item),
+                        orElse: () => "");
 
-      if (ids.isEmpty) {
-        continue;
-      }
+                if (ids.isEmpty) {
+                  continue;
+                }
 
-      final result = await http.get(
-        Uri.parse(
-          "${_getAddonBaseURL(addon)}/meta/${(id as Meta).type}/${id.id}.json",
-        ),
-      );
+                final result = await http.get(
+                  Uri.parse(
+                    "${_getAddonBaseURL(addon)}/meta/${(id as Meta).type}/${id.id}.json",
+                  ),
+                );
 
-      print("${_getAddonBaseURL(addon)}/meta/${(id).type}/${id.id}.json");
+                return StreamMetaResponse.fromJson(jsonDecode(result.body))
+                    .meta;
+              }
 
-      return StreamMetaResponse.fromJson(jsonDecode(result.body)).meta;
-    }
-
-    return null;
+              return null;
+            })
+        .stream
+        .where((item) {
+          return item.status != QueryStatus.loading;
+        })
+        .first
+        .then((docs) {
+          if (docs.error != null) {
+            throw docs.error;
+          }
+          return docs.data;
+        });
   }
 
   List<InternalManifestItemConfig> getConfig(dynamic configOutput) {
@@ -120,7 +145,6 @@ class StremioConnectionService extends BaseConnectionService {
           return "${filter.title}=${Uri.encodeComponent(filter.value.toString())}";
         }).join('&');
 
-        // Add filters to URL
         if (filterPath.isNotEmpty) {
           url += "/$filterPath";
         }
@@ -128,11 +152,32 @@ class StremioConnectionService extends BaseConnectionService {
 
       url += ".json";
 
-      final httpBody = await http.get(
-        Uri.parse(url),
-      );
+      final result = await Query(
+        config: QueryConfig(
+          cacheDuration: const Duration(
+            hours: 8,
+          ),
+        ),
+        queryFn: () async {
+          final httpBody = await http.get(
+            Uri.parse(url),
+          );
 
-      final result = StrmioMeta.fromJson(jsonDecode(httpBody.body));
+          return StrmioMeta.fromJson(jsonDecode(httpBody.body));
+        },
+        key: url,
+      )
+          .stream
+          .where((item) {
+            return item.status != QueryStatus.loading;
+          })
+          .first
+          .then((docs) {
+            if (docs.error != null) {
+              throw docs.error;
+            }
+            return docs.data!;
+          });
 
       hasMore = result.hasMore ?? false;
       returnValue.addAll(result.metas ?? []);
@@ -147,34 +192,76 @@ class StremioConnectionService extends BaseConnectionService {
   }
 
   @override
-  Widget renderCard(
-      LibraryRecord library, LibraryItem item, String heroPrefix) {
+  Widget renderCard(LibraryItem item, String heroPrefix) {
     return StremioCard(
       item: item,
       prefix: heroPrefix,
       connectionId: connectionId,
-      libraryId: library.id,
+      service: this,
     );
   }
 
   @override
-  Widget renderList(
-      LibraryRecord library, LibraryItem item, String heroPrefix) {
+  Future<List<LibraryItem>> getBulkItem(List<LibraryItem> ids) async {
+    if (ids.isEmpty) {
+      return [];
+    }
+
+    return (await Future.wait(
+      ids.map(
+        (res) async {
+          return getItemById(res).then((item) {
+            return (item as Meta).copyWith(
+              progress: (res as Meta).progress,
+              nextSeason: res.nextSeason,
+              nextEpisode: res.nextEpisode,
+              nextEpisodeTitle: res.nextEpisodeTitle,
+            );
+          });
+        },
+      ),
+    ))
+        .whereType<Meta>()
+        .toList();
+  }
+
+  @override
+  Widget renderList(LibraryItem item, String heroPrefix) {
     return StremioListItem(item: item);
   }
 
   Future<StremioManifest> _getManifest(String url) async {
-    final String result;
-    if (manifestCache.containsKey(url)) {
-      result = manifestCache[url]!;
-    } else {
-      result = (await http.get(Uri.parse(url))).body;
-      manifestCache[url] = result;
-    }
+    return Query(
+            key: url,
+            config: QueryConfig(
+              cacheDuration: const Duration(days: 30),
+              refetchDuration: const Duration(days: 1),
+            ),
+            queryFn: () async {
+              final String result;
+              if (manifestCache.containsKey(url)) {
+                result = manifestCache[url]!;
+              } else {
+                result = (await http.get(Uri.parse(url))).body;
+                manifestCache[url] = result;
+              }
 
-    final body = jsonDecode(result);
-    final resultFinal = StremioManifest.fromJson(body);
-    return resultFinal;
+              final body = jsonDecode(result);
+              final resultFinal = StremioManifest.fromJson(body);
+              return resultFinal;
+            })
+        .stream
+        .where((item) {
+          return item.status != QueryStatus.loading;
+        })
+        .first
+        .then((docs) {
+          if (docs.error != null) {
+            throw docs.error;
+          }
+          return docs.data!;
+        });
+    ;
   }
 
   _getAddonBaseURL(String input) {
@@ -232,7 +319,6 @@ class StremioConnectionService extends BaseConnectionService {
 
   @override
   Future<void> getStreams(
-    LibraryRecord library,
     LibraryItem id, {
     String? season,
     String? episode,
@@ -257,29 +343,50 @@ class StremioConnectionService extends BaseConnectionService {
           final url =
               "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
 
-          print(url);
+          final result = await Query(
+            key: url,
+            queryFn: () async {
+              final result = await http.get(Uri.parse(url), headers: {});
 
-          final result = await http.get(Uri.parse(url), headers: {});
+              if (result.statusCode == 404) {
+                if (callback != null) {
+                  callback(
+                    null,
+                    ArgumentError(
+                      "Invalid status code for the addon ${addonManifest.name} with id ${addonManifest.id}",
+                    ),
+                  );
+                }
+              }
 
-          if (result.statusCode == 404) {
-            if (callback != null) {
-              callback(
-                null,
-                ArgumentError(
-                  "Invalid status code for the addon ${addonManifest.name} with id ${addonManifest.id}",
-                ),
-              );
-            }
+              return result.body;
+            },
+          )
+              .stream
+              .where((item) {
+                return item.status != QueryStatus.loading;
+              })
+              .first
+              .then((docs) {
+                return docs.data;
+              });
+
+          if (result == null) {
             continue;
           }
 
-          final body = StreamResponse.fromJson(jsonDecode(result.body));
+          final body = StreamResponse.fromJson(jsonDecode(result));
 
           streams.addAll(
             body.streams
                 .map(
                   (item) => videoStreamToStreamList(
-                      item, meta, season, episode, addonManifest),
+                    item,
+                    meta,
+                    season,
+                    episode,
+                    addonManifest,
+                  ),
                 )
                 .whereType<StreamList>()
                 .toList(),

@@ -153,9 +153,12 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                             // Username field
                             _buildTextField(
                               controller: _usernameController,
-                              hintText: 'Username',
+                              hintText: 'Email',
                               prefixIcon: Icons.person_outline,
                               autofocus: true,
+                              autoFillHints: [
+                                AutofillHints.email,
+                              ],
                             ),
                             const SizedBox(height: 16),
 
@@ -165,6 +168,9 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                               hintText: 'Password',
                               prefixIcon: Icons.lock_outline,
                               obscureText: _obscurePassword,
+                              autoFillHints: [
+                                AutofillHints.password,
+                              ],
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
@@ -227,6 +233,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
     bool obscureText = false,
     Widget? suffixIcon,
     bool autofocus = false,
+    List<String>? autoFillHints = const [],
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -245,6 +252,9 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
           color: Colors.white,
           fontSize: 15,
         ),
+        autofillHints: autoFillHints,
+        textInputAction: TextInputAction.next,
+        onEditingComplete: () => FocusScope.of(context).nextFocus(),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.exo2(

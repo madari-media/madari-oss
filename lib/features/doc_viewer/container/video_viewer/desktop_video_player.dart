@@ -21,6 +21,7 @@ MaterialDesktopVideoControlsThemeData getDesktopControls(
 }) {
   return MaterialDesktopVideoControlsThemeData(
     toggleFullscreenOnDoublePress: false,
+    displaySeekBar: true,
     topButtonBar: [
       SafeArea(
         child: MaterialDesktopCustomButton(
@@ -51,6 +52,7 @@ MaterialDesktopVideoControlsThemeData getDesktopControls(
             );
           }
         : null,
+    playAndPauseOnTap: true,
     bottomButtonBar: [
       const MaterialDesktopSkipPreviousButton(),
       const MaterialDesktopPlayOrPauseButton(),

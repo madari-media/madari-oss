@@ -16,6 +16,8 @@ class DocViewer extends StatefulWidget {
   final String? season;
   final BaseConnectionService? service;
 
+  final double? progress;
+
   const DocViewer({
     super.key,
     required this.source,
@@ -23,6 +25,7 @@ class DocViewer extends StatefulWidget {
     this.library,
     this.meta,
     this.season,
+    this.progress,
   });
 
   @override

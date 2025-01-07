@@ -6,13 +6,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
+import 'package:madari_client/features/doc_viewer/container/video_viewer/tv_controls.dart';
 import 'package:madari_client/features/watch_history/service/base_watch_history.dart';
+import 'package:madari_client/utils/tv_detector.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../utils/load_language.dart';
 import '../../connections/types/stremio/stremio_base.types.dart' as types;
 import '../../connections/widget/stremio/stremio_season_selector.dart';
+import '../../trakt/service/trakt.service.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
 import 'video_viewer/desktop_video_player.dart';
@@ -42,12 +45,20 @@ class _VideoViewerState extends State<VideoViewer> {
   StreamSubscription? _subTracks;
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
   Timer? _timer;
-  late final player = Player(
+  late final Player player = Player(
     configuration: const PlayerConfiguration(
       title: "Madari",
     ),
   );
   late final GlobalKey<VideoState> key = GlobalKey<VideoState>();
+
+  double get currentProgressInPercentage {
+    final duration = player.state.duration.inSeconds;
+    final position = player.state.position.inSeconds;
+    return duration > 0 ? (position / duration * 100) : 0;
+  }
+
+  Future<List<TraktProgress>>? traktProgress;
 
   saveWatchHistory() {
     final duration = player.state.duration.inSeconds;
@@ -134,6 +145,71 @@ class _VideoViewerState extends State<VideoViewer> {
     });
   }
 
+  setDurationFromTrakt() async {
+    if (player.state.duration.inSeconds < 2) {
+      return;
+    }
+
+    if (!TraktService.instance!.isEnabled() || traktProgress == null) {
+      player.play();
+      return;
+    }
+
+    final progress = await traktProgress;
+
+    if ((progress ?? []).isEmpty) {
+      player.play();
+    }
+
+    final duration = Duration(
+      seconds: calculateSecondsFromProgress(
+        player.state.duration.inSeconds.toDouble(),
+        progress!.first.progress,
+      ),
+    );
+
+    player.seek(duration);
+    player.play();
+
+    addListenerForTrakt();
+  }
+
+  List<StreamSubscription> listener = [];
+
+  bool traktIntegration = false;
+
+  addListenerForTrakt() {
+    if (traktIntegration == true) {
+      return;
+    }
+
+    traktIntegration = true;
+
+    final streams = player.stream.playing.listen((item) {
+      if (item) {
+        TraktService.instance!.startScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      } else {
+        TraktService.instance!.pauseScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      }
+    });
+
+    final oneMore = player.stream.completed.listen((item) {
+      TraktService.instance!.stopScrobbling(
+        meta: widget.meta as types.Meta,
+        progress: currentProgressInPercentage,
+      );
+    });
+
+    listener.add(streams);
+    listener.add(oneMore);
+  }
+
   PlaybackConfig config = getPlaybackConfig();
 
   bool defaultConfigSelected = false;
@@ -155,6 +231,12 @@ class _VideoViewerState extends State<VideoViewer> {
         });
       }
     }
+
+    _duration = player.stream.duration.listen((item) {
+      if (item.inSeconds != 0) {
+        setDurationFromTrakt();
+      }
+    });
 
     _streamComplete = player.stream.completed.listen((completed) {
       if (completed) {
@@ -189,11 +271,17 @@ class _VideoViewerState extends State<VideoViewer> {
       saveWatchHistory();
     });
 
-    this._streamListen = player.stream.playing.listen((playing) {
+    _streamListen = player.stream.playing.listen((playing) {
       if (playing) {
         saveWatchHistory();
       }
     });
+
+    if (widget.meta is types.Meta) {
+      traktProgress = TraktService.instance!.getProgress(
+        widget.meta as types.Meta,
+      );
+    }
   }
 
   loadFile() async {
@@ -226,7 +314,7 @@ class _VideoViewerState extends State<VideoViewer> {
             (_source as FileSource).filePath,
             start: duration,
           ),
-          play: true,
+          play: false,
         );
       case const (URLSource):
       case const (MediaURLSource):
@@ -237,7 +325,7 @@ class _VideoViewerState extends State<VideoViewer> {
             httpHeaders: (_source as URLSource).headers,
             start: duration,
           ),
-          play: true,
+          play: false,
         );
     }
   }
@@ -246,6 +334,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
   late StreamSubscription<bool> _streamComplete;
   late StreamSubscription<bool> _streamListen;
+  late StreamSubscription<dynamic> _duration;
 
   onLibrarySelect() async {
     controller.player.pause();
@@ -261,7 +350,6 @@ class _VideoViewerState extends State<VideoViewer> {
             slivers: [
               StremioItemSeasonSelector(
                 service: widget.service,
-                library: widget.library!,
                 meta: widget.meta as types.Meta,
                 shouldPop: true,
                 season: int.tryParse(widget.currentSeason!),
@@ -281,12 +369,22 @@ class _VideoViewerState extends State<VideoViewer> {
 
   @override
   void dispose() {
+    if (traktIntegration && widget.meta is types.Meta) {
+      TraktService.instance!.stopScrobbling(
+        meta: widget.meta as types.Meta,
+        progress: currentProgressInPercentage,
+      );
+    }
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    for (final item in listener) {
+      item.cancel();
+    }
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [],
@@ -295,6 +393,7 @@ class _VideoViewerState extends State<VideoViewer> {
     _subTracks?.cancel();
     _streamComplete.cancel();
     _streamListen.cancel();
+    _duration.cancel();
     player.dispose();
     super.dispose();
   }
@@ -306,66 +405,88 @@ class _VideoViewerState extends State<VideoViewer> {
     );
   }
 
+  _buildMobileView(BuildContext context) {
+    final mobile = getMobileVideoPlayer(
+      context,
+      onLibrarySelect: onLibrarySelect,
+      hasLibrary: widget.service != null &&
+          widget.library != null &&
+          widget.meta != null,
+      audioTracks: audioTracks,
+      player: player,
+      source: _source,
+      subtitles: subtitles,
+      onSubtitleClick: onSubtitleSelect,
+      onAudioClick: onAudioSelect,
+      toggleScale: () {
+        setState(() {
+          isScaled = !isScaled;
+        });
+      },
+    );
+
+    return MaterialVideoControlsTheme(
+      fullscreen: mobile,
+      normal: mobile,
+      child: Video(
+        fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
+        pauseUponEnteringBackgroundMode: true,
+        key: key,
+        onExitFullscreen: () async {
+          await defaultExitNativeFullscreen();
+          if (context.mounted) Navigator.of(context).pop();
+        },
+        controller: controller,
+        controls: MaterialVideoControls,
+      ),
+    );
+  }
+
+  _buildDesktop(BuildContext context) {
+    final desktop = getDesktopControls(
+      context,
+      audioTracks: audioTracks,
+      player: player,
+      source: _source,
+      subtitles: subtitles,
+      onAudioSelect: onAudioSelect,
+      onSubtitleSelect: onSubtitleSelect,
+    );
+
+    return MaterialDesktopVideoControlsTheme(
+      normal: desktop,
+      fullscreen: desktop,
+      child: Video(
+        key: key,
+        width: MediaQuery.of(context).size.width,
+        fit: BoxFit.fitWidth,
+        controller: controller,
+        controls: MaterialDesktopVideoControls,
+      ),
+    );
+  }
+
   _buildBody(BuildContext context) {
+    if (DeviceDetector.isTV()) {
+      return MaterialTvVideoControlsTheme(
+        fullscreen: const MaterialTvVideoControlsThemeData(),
+        normal: const MaterialTvVideoControlsThemeData(),
+        child: Video(
+          key: key,
+          width: MediaQuery.of(context).size.width,
+          fit: BoxFit.fitWidth,
+          controller: controller,
+          controls: MaterialTvVideoControls,
+        ),
+      );
+    }
+
     switch (Theme.of(context).platform) {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
-        final mobile = getMobileVideoPlayer(
-          context,
-          onLibrarySelect: onLibrarySelect,
-          hasLibrary: widget.service != null &&
-              widget.library != null &&
-              widget.meta != null,
-          audioTracks: audioTracks,
-          player: player,
-          source: _source,
-          subtitles: subtitles,
-          onSubtitleClick: onSubtitleSelect,
-          onAudioClick: onAudioSelect,
-          toggleScale: () {
-            setState(() {
-              isScaled = !isScaled;
-            });
-          },
-        );
-
-        return MaterialVideoControlsTheme(
-          fullscreen: mobile,
-          normal: mobile,
-          child: Video(
-            fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
-            pauseUponEnteringBackgroundMode: true,
-            key: key,
-            onExitFullscreen: () async {
-              await defaultExitNativeFullscreen();
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            controller: controller,
-            controls: MaterialVideoControls,
-          ),
-        );
+        return _buildMobileView(context);
       default:
-        final desktop = getDesktopControls(
-          context,
-          audioTracks: audioTracks,
-          player: player,
-          source: _source,
-          subtitles: subtitles,
-          onAudioSelect: onAudioSelect,
-          onSubtitleSelect: onSubtitleSelect,
-        );
-
-        return MaterialDesktopVideoControlsTheme(
-          normal: desktop,
-          fullscreen: desktop,
-          child: Video(
-            key: key,
-            width: MediaQuery.of(context).size.width,
-            fit: BoxFit.fitWidth,
-            controller: controller,
-            controls: MaterialDesktopVideoControls,
-          ),
-        );
+        return _buildDesktop(context);
     }
   }
 

@@ -13,7 +13,7 @@ class StremioItemViewer extends StatefulWidget {
   final Meta? original;
   final String? hero;
   final BaseConnectionService? service;
-  final String library;
+  final num? progress;
 
   const StremioItemViewer({
     super.key,
@@ -21,7 +21,7 @@ class StremioItemViewer extends StatefulWidget {
     this.original,
     this.hero,
     this.service,
-    required this.library,
+    this.progress,
   });
 
   @override
@@ -70,7 +70,6 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                 )
               : RenderStreamList(
                   service: widget.service!,
-                  library: widget.library,
                   id: widget.meta as LibraryItem,
                   shouldPop: false,
                 ),
@@ -116,7 +115,7 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                     children: [
                       Expanded(
                         child: Text(
-                          item!.name!,
+                          (item!.name ?? "No name"),
                           style: Theme.of(context).textTheme.titleLarge,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -149,7 +148,9 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                           _onPlayPressed(context);
                         },
                         label: Text(
-                          "Play",
+                          widget.progress != null && widget.progress != 0
+                              ? "Resume"
+                              : "Play",
                           style: Theme.of(context)
                               .primaryTextTheme
                               .bodyMedium
@@ -278,8 +279,7 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                 widget.original?.type == "series" &&
                 widget.original?.videos?.isNotEmpty == true)
               StremioItemSeasonSelector(
-                meta: item!,
-                library: widget.library,
+                meta: (item as Meta),
                 service: widget.service,
               ),
             SliverPadding(

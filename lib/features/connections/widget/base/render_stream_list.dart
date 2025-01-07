@@ -17,19 +17,19 @@ const kIsWeb = bool.fromEnvironment('dart.library.js_util');
 
 class RenderStreamList extends StatefulWidget {
   final BaseConnectionService service;
-  final String library;
   final LibraryItem id;
   final String? episode;
   final String? season;
   final bool shouldPop;
+  final double? progress;
 
   const RenderStreamList({
     super.key,
     required this.service,
-    required this.library,
     required this.id,
     this.season,
     this.episode,
+    this.progress,
     required this.shouldPop,
   });
 
@@ -170,10 +170,9 @@ class _RenderStreamListState extends State<RenderStreamList> {
   final Map<String, StreamSource> _sources = {};
 
   Future getLibrary() async {
-    final library = await BaseConnectionService.getLibraries();
+    await BaseConnectionService.getLibraries();
 
-    final result = await widget.service.getStreams(
-      library.data.firstWhere((i) => i.id == widget.library),
+    await widget.service.getStreams(
       widget.id,
       episode: widget.episode,
       season: widget.season,
@@ -310,9 +309,14 @@ class _RenderStreamListState extends State<RenderStreamList> {
                 builder: (ctx) => DocViewer(
                   source: item.source,
                   service: widget.service,
-                  library: widget.library,
-                  meta: widget.id,
+                  meta: widget.season != null && widget.episode != null
+                      ? (widget.id as Meta).copyWith(
+                          nextSeason: int.parse(widget.season!),
+                          nextEpisode: int.parse(widget.episode!),
+                        )
+                      : widget.id,
                   season: widget.season,
+                  progress: widget.progress,
                 ),
               ),
             );

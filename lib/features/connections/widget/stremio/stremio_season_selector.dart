@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/connections/widget/base/render_stream_list.dart';
+import 'package:madari_client/features/trakt/service/trakt.service.dart';
 
 import '../../../doc_viewer/types/doc_source.dart';
 import '../../../watch_history/service/base_watch_history.dart';
@@ -13,7 +14,6 @@ import '../../../watch_history/service/zeee_watch_history.dart';
 class StremioItemSeasonSelector extends StatefulWidget {
   final Meta meta;
   final int? season;
-  final String library;
   final BaseConnectionService? service;
   final bool shouldPop;
 
@@ -21,7 +21,6 @@ class StremioItemSeasonSelector extends StatefulWidget {
     super.key,
     required this.meta,
     this.season,
-    required this.library,
     required this.service,
     this.shouldPop = false,
   });
@@ -39,6 +38,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
 
   final Map<String, double> _progress = {};
+  final Map<int, Map<int, double>> _traktProgress = {};
 
   @override
   void initState() {
@@ -67,6 +67,32 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
   }
 
   getWatchHistory() async {
+    final traktService = TraktService.instance;
+
+    try {
+      if (traktService!.isEnabled()) {
+        final result = await traktService.getProgress(widget.meta);
+
+        for (final item in result) {
+          if (!_traktProgress.containsKey(item.season)) {
+            _traktProgress.addAll(<int, Map<int, double>>{
+              item.season!: {},
+            });
+          }
+          _traktProgress[item.season!] = _traktProgress[item.season] ?? {};
+          _traktProgress[item.season]![item.episode!] = item.progress;
+        }
+
+        setState(() {});
+
+        return;
+      }
+    } catch (e, stack) {
+      print(e);
+      print(stack);
+      print("Unable to get trakt progress");
+    }
+
     final docs = await zeeeWatchHistory!.getItemWatchHistory(
       ids: widget.meta.videos!.map((item) {
         return WatchHistoryGetRequest(id: item.id);
@@ -111,7 +137,6 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           ),
           body: RenderStreamList(
             service: widget.service!,
-            library: widget.library,
             id: meta,
             season: currentSeason.toString(),
             shouldPop: widget.shouldPop,
@@ -234,6 +259,12 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                 final episodes = seasonMap[currentSeason]!;
                 final episode = episodes[index];
 
+                final progress = _traktProgress[episode.season]
+                            ?[episode.episode] ==
+                        null
+                    ? (_progress[episode.id] ?? 0) / 100
+                    : (_traktProgress[episode.season]![episode.episode]! / 100);
+
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
@@ -303,13 +334,45 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                                     ),
                                     Center(
                                       child: CircularProgressIndicator(
-                                        value:
-                                            (_progress[episode.id] ?? 0) / 100,
+                                        value: progress,
                                       ),
                                     )
                                   ],
                                 ),
                               ),
+                              if (progress > .9)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.teal,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 4.0,
+                                          bottom: 2.0,
+                                          left: 4.0,
+                                          top: 2.0,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            "Watched",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Colors.black,
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),

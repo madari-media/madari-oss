@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:madari_client/engine/engine.dart';
+import 'package:madari_client/features/settings/screen/trakt_integration_screen.dart';
 import 'package:madari_client/features/watch_history/service/zeee_watch_history.dart';
 import 'package:madari_client/pages/sign_in.page.dart';
 
@@ -59,6 +60,17 @@ class MoreContainer extends StatelessWidget {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => const PlaybackSettingsScreen(),
+                ),
+              ),
+            ),
+            _buildListItem(
+              context,
+              icon: Icons.connect_without_contact,
+              title: "Trakt",
+              subtitle: "Configure your Trakt account with Madari",
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TraktIntegration(),
                 ),
               ),
             ),

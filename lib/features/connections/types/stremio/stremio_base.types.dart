@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -299,6 +298,21 @@ class Meta extends LibraryItem {
   @JsonKey(name: "dvdRelease")
   final DateTime? dvdRelease;
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final double? progress;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final int? nextSeason;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final int? nextEpisode;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final String? nextEpisodeTitle;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final int? traktId;
+
   String get imdbRating {
     return (imdbRating_ ?? "").toString();
   }
@@ -313,16 +327,20 @@ class Meta extends LibraryItem {
     this.popularities,
     required this.type,
     this.cast,
+    this.traktId,
     this.country,
     this.description,
     this.genre,
     this.imdbRating_,
     this.poster,
+    this.nextEpisode,
+    this.nextSeason,
     this.released,
     this.slug,
     this.year,
     this.status,
     this.tvdbId,
+    this.nextEpisodeTitle,
     this.director,
     this.writer,
     this.background,
@@ -343,7 +361,8 @@ class Meta extends LibraryItem {
     this.creditsCrew,
     this.language,
     this.dvdRelease,
-  });
+    this.progress,
+  }) : super(id: id);
 
   Meta copyWith({
     String? imdbId,
@@ -381,6 +400,10 @@ class Meta extends LibraryItem {
     List<CreditsCrew>? creditsCrew,
     String? language,
     DateTime? dvdRelease,
+    int? nextSeason,
+    int? nextEpisode,
+    String? nextEpisodeTitle,
+    double? progress,
   }) =>
       Meta(
         imdbId: imdbId ?? this.imdbId,
@@ -418,22 +441,14 @@ class Meta extends LibraryItem {
         creditsCrew: creditsCrew ?? this.creditsCrew,
         language: language ?? this.language,
         dvdRelease: dvdRelease ?? this.dvdRelease,
+        nextEpisode: nextEpisode ?? this.nextEpisode,
+        nextEpisodeTitle: nextEpisodeTitle ?? this.nextEpisodeTitle,
+        nextSeason: nextSeason ?? this.nextSeason,
+        progress: progress ?? this.progress,
       );
 
   factory Meta.fromJson(Map<String, dynamic> json) {
     final result = _$MetaFromJson(json);
-
-    if (kIsWeb) {
-      result.poster = result.poster?.replaceFirst(
-        "images.metahub.space/",
-        "madari-proxy.b-cdn.net/",
-      );
-
-      result.background = result.poster?.replaceFirst(
-        "images.metahub.space/",
-        "madari-proxy.b-cdn.net/",
-      );
-    }
 
     return result;
   }
