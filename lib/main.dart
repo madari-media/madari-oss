@@ -12,7 +12,6 @@ import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/doc_viewer/container/doc_viewer.dart';
 import 'package:madari_client/features/doc_viewer/types/doc_source.dart';
 import 'package:madari_client/routes.dart';
-import 'package:madari_client/utils/cached_storage_static.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as path;
 import 'package:window_manager/window_manager.dart';
@@ -29,11 +28,9 @@ void main() async {
     print("Unable");
   }
 
-  StaticCachedStorage.storage = await CachedStorage.ensureInitialized();
-
   try {
     CachedQuery.instance.configFlutter(
-      storage: StaticCachedStorage.storage,
+      storage: await CachedStorage.ensureInitialized(),
       config: QueryConfigFlutter(
         refetchDuration: const Duration(minutes: 60),
         cacheDuration: const Duration(minutes: 60),
