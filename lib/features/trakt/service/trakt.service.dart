@@ -324,13 +324,20 @@ class TraktService {
       );
 
       final result = await stremioService!.getBulkItem(
-        scheduleShows.map((show) {
-          final imdb = show['show']['ids']['imdb'];
-          return Meta(
-            type: "series",
-            id: imdb,
-          );
-        }).toList(),
+        scheduleShows
+            .map((show) {
+              try {
+                final imdb = show['show']['ids']['imdb'];
+                return Meta(
+                  type: "series",
+                  id: imdb,
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<Meta>()
+            .toList(),
       );
 
       return result;
