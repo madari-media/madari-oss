@@ -74,7 +74,7 @@ class StremioConnectionService extends BaseConnectionService {
 
                 final result = await http.get(
                   Uri.parse(
-                    "${_getAddonBaseURL(addon)}/meta/${(id as Meta).type}/${id.id}.json",
+                    "${_getAddonBaseURL(addon)}/meta/${id.type}/${id.id}.json",
                   ),
                 );
 
@@ -341,7 +341,7 @@ class StremioConnectionService extends BaseConnectionService {
           }
 
           final url =
-              "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.id)}.json";
+              "${_getAddonBaseURL(addon)}/stream/${meta.type}/${Uri.encodeComponent(id.currentVideo?.id ?? id.id)}.json";
 
           final result = await Query(
             key: url,

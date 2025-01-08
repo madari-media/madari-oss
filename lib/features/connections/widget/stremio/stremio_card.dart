@@ -51,15 +51,8 @@ class StremioCard extends StatelessWidget {
     );
   }
 
-  Video? get currentVideo {
-    return (item as Meta).videos?.firstWhere((episode) {
-      return (item as Meta).nextEpisode == episode.episode &&
-          (item as Meta).nextSeason == episode.season;
-    });
-  }
-
   bool get isInFuture {
-    final video = currentVideo;
+    final video = (item as Meta).currentVideo;
     return video != null &&
         video.firstAired != null &&
         video.firstAired!.isAfter(DateTime.now());
@@ -70,7 +63,7 @@ class StremioCard extends StatelessWidget {
       return Container();
     }
 
-    final video = currentVideo;
+    final video = meta.currentVideo;
 
     return Container(
       decoration: BoxDecoration(
@@ -91,10 +84,10 @@ class StremioCard extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       Colors.black,
-                      Colors.transparent,
+                      Colors.black54,
                     ],
                     begin: Alignment.topLeft,
-                    end: Alignment.bottomCenter,
+                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
@@ -121,10 +114,25 @@ class StremioCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Text("S${meta.nextSeason} E${meta.nextEpisode}"),
                   Text(
                     "${meta.name}",
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(
+                    height: 4,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      "S${meta.nextSeason} E${meta.nextEpisode}",
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.black,
+                          ),
+                    ),
                   ),
                   Text(
                     "${meta.nextEpisodeTitle}".trim(),

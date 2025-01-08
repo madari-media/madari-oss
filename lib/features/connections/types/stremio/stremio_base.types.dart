@@ -323,6 +323,12 @@ class Meta extends LibraryItem {
     return (releaseInfo_).toString();
   }
 
+  Video? get currentVideo {
+    return videos?.firstWhere((episode) {
+      return nextEpisode == episode.episode && nextSeason == episode.season;
+    });
+  }
+
   Meta({
     this.imdbId,
     this.name,

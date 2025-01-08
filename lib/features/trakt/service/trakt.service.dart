@@ -169,32 +169,40 @@ class TraktService {
       final Map<String, double> progress = {};
 
       final result = await stremioService!.getBulkItem(
-        continueWatching.map((movie) {
-          if (movie['type'] == 'episode') {
-            progress[movie['show']['ids']['imdb']] = movie['progress'];
+        continueWatching
+            .sublist(0, 20)
+            .map((movie) {
+              try {
+                if (movie['type'] == 'episode') {
+                  progress[movie['show']['ids']['imdb']] = movie['progress'];
 
-            return Meta(
-              type: "series",
-              id: movie['show']['ids']['imdb'],
-              progress: movie['progress'],
-              nextSeason: movie['episode']['season'],
-              nextEpisode: movie['episode']['number'],
-              nextEpisodeTitle: movie['episode']['title'],
-            );
-          }
+                  return Meta(
+                    type: "series",
+                    id: movie['show']['ids']['imdb'],
+                    progress: movie['progress'],
+                    nextSeason: movie['episode']['season'],
+                    nextEpisode: movie['episode']['number'],
+                    nextEpisodeTitle: movie['episode']['title'],
+                  );
+                }
 
-          final imdb = movie['movie']['ids']['imdb'];
-          progress[imdb] = movie['progress'];
+                final imdb = movie['movie']['ids']['imdb'];
+                progress[imdb] = movie['progress'];
 
-          return Meta(
-            type: "movie",
-            id: imdb,
-            progress: movie['progress'],
-          );
-        }).toList(),
+                return Meta(
+                  type: "movie",
+                  id: imdb,
+                  progress: movie['progress'],
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<Meta>()
+            .toList(),
       );
 
-      return result.sublist(0, 20).map((res) {
+      return result.map((res) {
         Meta returnValue = res as Meta;
 
         if (progress.containsKey(res.id)) {
@@ -232,8 +240,6 @@ class TraktService {
       );
 
       if (scheduleResponse.statusCode != 200) {
-        print(scheduleResponse.body);
-        print(scheduleResponse.statusCode);
         print('Failed to fetch upcoming schedule');
         throw Error();
       }
@@ -278,14 +284,21 @@ class TraktService {
       final watchlistItems = json.decode(watchlistResponse.body) as List;
 
       final result = await stremioService!.getBulkItem(
-        watchlistItems.map((item) {
-          final type = item['type'];
-          final imdb = item[type]['ids']['imdb'];
-          return Meta(
-            type: type,
-            id: imdb,
-          );
-        }).toList(),
+        watchlistItems
+            .map((item) {
+              try {
+                final type = item['type'];
+                final imdb = item[type]['ids']['imdb'];
+                return Meta(
+                  type: type,
+                  id: imdb,
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<Meta>()
+            .toList(),
       );
 
       return result;
@@ -363,13 +376,20 @@ class TraktService {
           json.decode(recommendationsResponse.body) as List;
 
       final result = await stremioService!.getBulkItem(
-        recommendedMovies.map((movie) {
-          final imdb = movie['ids']['imdb'];
-          return Meta(
-            type: "movie",
-            id: imdb,
-          );
-        }).toList(),
+        recommendedMovies
+            .map((movie) {
+              try {
+                final imdb = movie['ids']['imdb'];
+                return Meta(
+                  type: "movie",
+                  id: imdb,
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<Meta>()
+            .toList(),
       );
 
       return result;
@@ -478,7 +498,6 @@ class TraktService {
       );
 
       if (response.statusCode != 201) {
-        print(response.statusCode);
         throw Exception('Failed to pause scrobbling');
       }
     } catch (e, stack) {
@@ -500,10 +519,6 @@ class TraktService {
         },
       };
     } else {
-      if (meta.nextEpisode == null && meta.nextSeason == null) {
-        throw ArgumentError("");
-      }
-
       return {
         "show": {
           "title": meta.name,
@@ -554,33 +569,45 @@ class TraktService {
       return [];
     }
 
-    if (meta.type == "series") {
-      final response = await http.get(
-        Uri.parse("$_baseUrl/sync/playback/episodes"),
-        headers: headers,
-      );
+    try {
+      if (meta.type == "series") {
+        final response = await http.get(
+          Uri.parse("$_baseUrl/sync/playback/episodes"),
+          headers: headers,
+        );
 
-      if (response.statusCode != 200) {
-        return [];
-      }
-
-      final body = jsonDecode(response.body) as List;
-
-      final List<TraktProgress> result = [];
-
-      for (final item in body) {
-        if (item["type"] != "episode") {
-          continue;
+        if (response.statusCode != 200) {
+          return [];
         }
 
-        final isShow = item["show"]["ids"]["imdb"] == (meta.imdbId ?? meta.id);
+        final body = jsonDecode(response.body) as List;
 
-        final currentEpisode = item["episode"]["number"];
-        final currentSeason = item["episode"]["season"];
+        final List<TraktProgress> result = [];
 
-        if (isShow && meta.nextEpisode != null && meta.nextSeason != null) {
-          if (meta.nextSeason == currentSeason &&
-              meta.nextEpisode == currentEpisode) {
+        for (final item in body) {
+          if (item["type"] != "episode") {
+            continue;
+          }
+
+          final isShow =
+              item["show"]["ids"]["imdb"] == (meta.imdbId ?? meta.id);
+
+          final currentEpisode = item["episode"]["number"];
+          final currentSeason = item["episode"]["season"];
+
+          if (isShow && meta.nextEpisode != null && meta.nextSeason != null) {
+            if (meta.nextSeason == currentSeason &&
+                meta.nextEpisode == currentEpisode) {
+              result.add(
+                TraktProgress(
+                  id: meta.id,
+                  progress: item["progress"]!,
+                  episode: currentEpisode,
+                  season: currentSeason,
+                ),
+              );
+            }
+          } else if (isShow) {
             result.add(
               TraktProgress(
                 id: meta.id,
@@ -590,45 +617,39 @@ class TraktService {
               ),
             );
           }
-        } else if (isShow) {
-          result.add(
-            TraktProgress(
-              id: meta.id,
-              progress: item["progress"]!,
-              episode: currentEpisode,
-              season: currentSeason,
-            ),
-          );
-        }
-      }
-
-      return result;
-    } else {
-      final response = await http.get(
-        Uri.parse("$_baseUrl/sync/playback/movies"),
-        headers: headers,
-      );
-
-      if (response.statusCode != 200) {
-        return [];
-      }
-
-      final body = jsonDecode(response.body) as List;
-
-      for (final item in body) {
-        if (item["type"] != "movie") {
-          continue;
         }
 
-        if (item["movie"]["ids"]["imdb"] == (meta.imdbId ?? meta.id)) {
-          return [
-            TraktProgress(
-              id: item["movie"]["ids"]["imdb"],
-              progress: item["progress"],
-            ),
-          ];
+        return result;
+      } else {
+        final response = await http.get(
+          Uri.parse("$_baseUrl/sync/playback/movies"),
+          headers: headers,
+        );
+
+        if (response.statusCode != 200) {
+          return [];
+        }
+
+        final body = jsonDecode(response.body) as List;
+
+        for (final item in body) {
+          if (item["type"] != "movie") {
+            continue;
+          }
+
+          if (item["movie"]["ids"]["imdb"] == (meta.imdbId ?? meta.id)) {
+            return [
+              TraktProgress(
+                id: item["movie"]["ids"]["imdb"],
+                progress: item["progress"],
+              ),
+            ];
+          }
         }
       }
+    } catch (e) {
+      print(e);
+      return [];
     }
 
     return [];
