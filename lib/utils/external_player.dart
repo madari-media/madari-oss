@@ -34,6 +34,10 @@ final Map<String, List<ExternalMediaPlayer>> externalPlayers = {
       id: "com.brouken.player",
       name: "JustPlayer",
     ),
+    ExternalMediaPlayer(
+      id: "xyz.skybox.player",
+      name: "Skybox",
+    ),
   ],
   "ios": [
     ExternalMediaPlayer(

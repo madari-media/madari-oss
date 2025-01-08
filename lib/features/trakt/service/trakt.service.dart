@@ -75,7 +75,7 @@ class TraktService {
         'Authorization': 'Bearer $_token',
       };
 
-  Future<List<LibraryItem>> getUpNextSeries({bool noUpNext = false}) async {
+  Future<List<LibraryItem>> getUpNextSeries() async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -98,17 +98,6 @@ class TraktService {
         final showId = show['show']['ids']['trakt'];
         final imdb = show['show']['ids']['imdb'];
 
-        if (noUpNext == true) {
-          final meta = await stremioService!.getItemById(
-            Meta(
-              type: "series",
-              id: imdb,
-            ),
-          );
-
-          return (meta as Meta).copyWith();
-        }
-
         try {
           final progressResponse = await http.get(
             Uri.parse('$_baseUrl/shows/$showId/progress/watched'),
@@ -123,11 +112,13 @@ class TraktService {
 
           final nextEpisode = progress['next_episode'];
 
-          print(nextEpisode);
-
           if (nextEpisode != null && imdb != null) {
             final item = await stremioService!.getItemById(
-              Meta(type: "series", id: imdb),
+              Meta(
+                type: "series",
+                id: imdb,
+                externalIds: show['show']['ids'],
+              ),
             );
 
             item as Meta;
@@ -203,7 +194,7 @@ class TraktService {
         }).toList(),
       );
 
-      return result.map((res) {
+      return result.sublist(0, 20).map((res) {
         Meta returnValue = res as Meta;
 
         if (progress.containsKey(res.id)) {
@@ -325,15 +316,23 @@ class TraktService {
       final recommendedShows =
           json.decode(recommendationsResponse.body) as List;
 
-      final result = await stremioService!.getBulkItem(
-        recommendedShows.map((show) {
-          final imdb = show['ids']['imdb'];
-          return Meta(
-            type: "series",
-            id: imdb,
-          );
-        }).toList(),
-      );
+      final result = (await stremioService!.getBulkItem(
+        recommendedShows
+            .map((show) {
+              final imdb = show['ids']?['imdb'];
+
+              if (imdb == null) {
+                return null;
+              }
+
+              return Meta(
+                type: "series",
+                id: imdb,
+              );
+            })
+            .whereType<Meta>()
+            .toList(),
+      ));
 
       return result;
     } catch (e, stack) {

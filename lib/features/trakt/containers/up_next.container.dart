@@ -28,7 +28,7 @@ class _TraktContainerState extends State<TraktContainer> {
       key: widget.loadId,
       config: QueryConfig(
         cacheDuration: const Duration(days: 30),
-        refetchDuration: const Duration(minutes: 1),
+        refetchDuration: const Duration(minutes: 10),
         storageDuration: const Duration(days: 30),
       ),
       queryFn: () {

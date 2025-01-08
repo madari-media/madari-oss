@@ -88,6 +88,11 @@ class MoreContainer extends StatelessWidget {
               },
               hideTrailing: true,
             ),
+            Text(
+              "Version ${const String.fromEnvironment('BUILD_ID', defaultValue: "Dev")}",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),

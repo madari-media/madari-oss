@@ -124,7 +124,7 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build iOS
-        run: flutter build ios --release --no-codesign
+        run: make build_ipa
 
       - name: Create and Pack IPA
         run: |
@@ -178,7 +178,7 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux
-        run: flutter build linux --release
+        run: make build_linux
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -222,7 +222,7 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build MacOS
-        run: flutter build macos --release
+        run: make build_mac
 
       - name: Isolate the Build
         run: mkdir build/macos/Build/Products/Release/AppRelease

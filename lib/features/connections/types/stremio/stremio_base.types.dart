@@ -313,6 +313,8 @@ class Meta extends LibraryItem {
   @JsonKey(includeFromJson: false, includeToJson: false)
   final int? traktId;
 
+  final dynamic externalIds;
+
   String get imdbRating {
     return (imdbRating_ ?? "").toString();
   }
@@ -329,6 +331,7 @@ class Meta extends LibraryItem {
     this.cast,
     this.traktId,
     this.country,
+    this.externalIds,
     this.description,
     this.genre,
     this.imdbRating_,

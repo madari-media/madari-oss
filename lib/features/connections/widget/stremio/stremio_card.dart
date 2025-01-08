@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 
@@ -50,10 +51,26 @@ class StremioCard extends StatelessWidget {
     );
   }
 
+  Video? get currentVideo {
+    return (item as Meta).videos?.firstWhere((episode) {
+      return (item as Meta).nextEpisode == episode.episode &&
+          (item as Meta).nextSeason == episode.season;
+    });
+  }
+
+  bool get isInFuture {
+    final video = currentVideo;
+    return video != null &&
+        video.firstAired != null &&
+        video.firstAired!.isAfter(DateTime.now());
+  }
+
   _buildWideCard(BuildContext context, Meta meta) {
     if (meta.background == null) {
       return Container();
     }
+
+    final video = currentVideo;
 
     return Container(
       decoration: BoxDecoration(
@@ -67,6 +84,21 @@ class StremioCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          if (isInFuture)
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black,
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -91,6 +123,10 @@ class StremioCard extends StatelessWidget {
                 children: [
                   Text("S${meta.nextSeason} E${meta.nextEpisode}"),
                   Text(
+                    "${meta.name}",
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  Text(
                     "${meta.nextEpisodeTitle}".trim(),
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
@@ -98,6 +134,38 @@ class StremioCard extends StatelessWidget {
               ),
             ),
           ),
+          if (isInFuture)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                getRelativeDate(video!.firstAired!),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          if (isInFuture)
+            const Positioned(
+              bottom: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 10,
+                      ),
+                      child: Icon(
+                        Icons.calendar_month,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const Positioned(
             child: Center(
               child: IconButton.filled(
@@ -176,13 +244,21 @@ class StremioCard extends StatelessWidget {
 
     return Hero(
       tag: "$prefix${meta.type}${item.id}",
-      child: AspectRatio(
-        aspectRatio: 2 / 3,
-        child: (backgroundImage == null)
-            ? Text("${meta.name}")
-            : Stack(
+      child: (backgroundImage == null)
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
+                  Text(meta.name ?? "No name"),
+                  if (meta.description != null) Text(meta.description!),
+                ],
+              ),
+            )
+          : Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
                         image: CachedNetworkImageProvider(
@@ -230,72 +306,92 @@ class StremioCard extends StatelessWidget {
                           )
                         : const SizedBox.shrink(),
                   ),
-                  if (meta.progress != null)
-                    const Positioned.fill(
-                      child: IconButton(
-                        onPressed: null,
-                        icon: Icon(
-                          Icons.play_arrow,
-                          size: 24,
+                ),
+                if (meta.progress != null)
+                  const Positioned.fill(
+                    child: IconButton(
+                      onPressed: null,
+                      icon: Icon(
+                        Icons.play_arrow,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                if (meta.progress != null)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(
+                      value: meta.progress,
+                    ),
+                  ),
+                if (meta.nextEpisode != null && meta.nextSeason != null)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.grey,
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomLeft,
+                          end: Alignment.topRight,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              meta.name ?? "",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              "S${meta.nextSeason} E${meta.nextEpisode}",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  if (meta.progress != null)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: LinearProgressIndicator(
-                        value: meta.progress,
-                      ),
-                    ),
-                  if (meta.nextEpisode != null && meta.nextSeason != null)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.grey,
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 4, horizontal: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(
-                                meta.name ?? "",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              Text(
-                                "S${meta.nextSeason} E${meta.nextEpisode}",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                ],
-              ),
-      ),
+                  )
+              ],
+            ),
     );
+  }
+}
+
+String getRelativeDate(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final tomorrow = DateTime(now.year, now.month, now.day + 1);
+
+  final difference = date.difference(today).inDays;
+
+  if (date.isAtSameMomentAs(today)) {
+    return "It's today!";
+  } else if (date.isAtSameMomentAs(tomorrow)) {
+    return "Coming up tomorrow!";
+  } else if (difference > 1 && difference < 7) {
+    return "Coming up in $difference days";
+  } else if (difference >= 7 && difference < 14) {
+    return "Coming up next ${DateFormat('EEEE').format(date)}";
+  } else {
+    return "On ${DateFormat('MM/dd/yyyy').format(date)}";
   }
 }

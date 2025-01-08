@@ -38,7 +38,6 @@ class RenderStreamList extends StatefulWidget {
 }
 
 class _RenderStreamListState extends State<RenderStreamList> {
-  Stream<List<StreamList>>? _stream;
   final Map<String, double> _downloadProgress = {};
   final Map<String, String> _downloadError = {};
 
