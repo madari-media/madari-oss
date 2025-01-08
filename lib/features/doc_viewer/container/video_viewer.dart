@@ -200,10 +200,12 @@ class _VideoViewerState extends State<VideoViewer> {
     });
 
     final oneMore = player.stream.completed.listen((item) {
-      TraktService.instance!.stopScrobbling(
-        meta: widget.meta as types.Meta,
-        progress: currentProgressInPercentage,
-      );
+      if (item && player.state.duration.inSeconds > 10) {
+        TraktService.instance!.stopScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      }
     });
 
     listener.add(streams);

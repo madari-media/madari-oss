@@ -255,11 +255,31 @@ class StremioCard extends StatelessWidget {
       child: (backgroundImage == null)
           ? Center(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(meta.name ?? "No name"),
-                  if (meta.description != null) Text(meta.description!),
+                  const Expanded(
+                    child: Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        meta.name ?? "No name",
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             )
@@ -331,7 +351,8 @@ class StremioCard extends StatelessWidget {
                     left: 0,
                     right: 0,
                     child: LinearProgressIndicator(
-                      value: meta.progress,
+                      value: meta.progress! / 100,
+                      minHeight: 5,
                     ),
                   ),
                 if (meta.nextEpisode != null && meta.nextSeason != null)

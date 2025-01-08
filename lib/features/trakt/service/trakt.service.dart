@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_storage/cached_storage.dart';
@@ -16,18 +17,40 @@ class TraktService {
   static const String _baseUrl = 'https://api.trakt.tv';
   static const String _apiVersion = '2';
 
+  static const int _authedPostLimit = 100;
+  static const int _authedGetLimit = 1000;
+  static const Duration _rateLimitWindow = Duration(minutes: 5);
+
+  static const Duration _cacheRevalidationInterval = Duration(minutes: 5);
+
   static TraktService? _instance;
   static TraktService? get instance => _instance;
   static BaseConnectionService? stremioService;
+
+  int _postRequestCount = 0;
+  int _getRequestCount = 0;
+  DateTime _lastRateLimitReset = DateTime.now();
+
+  final Map<String, dynamic> _cache = {};
+  Timer? _cacheRevalidationTimer;
 
   static ensureInitialized() async {
     if (_instance != null) {
       return _instance;
     }
 
+    AppEngine.engine.pb.authStore.onChange.listen((item) {
+      if (!AppEngine.engine.pb.authStore.isValid) {
+        _instance?._cache.clear();
+      }
+    });
+
     final traktService = TraktService();
     await traktService.initStremioService();
     _instance = traktService;
+
+    // Start cache revalidation timer
+    _instance!._startCacheRevalidation();
   }
 
   Future<BaseConnectionService> initStremioService() async {
@@ -75,6 +98,93 @@ class TraktService {
         'Authorization': 'Bearer $_token',
       };
 
+  Future<void> _checkRateLimit(String method) async {
+    final now = DateTime.now();
+    if (now.difference(_lastRateLimitReset) > _rateLimitWindow) {
+      _postRequestCount = 0;
+      _getRequestCount = 0;
+      _lastRateLimitReset = now;
+    }
+
+    if (method == 'GET') {
+      if (_getRequestCount >= _authedGetLimit) {
+        throw Exception('GET rate limit exceeded');
+      }
+      _getRequestCount++;
+    } else if (method == 'POST' || method == 'PUT' || method == 'DELETE') {
+      if (_postRequestCount >= _authedPostLimit) {
+        throw Exception('POST/PUT/DELETE rate limit exceeded');
+      }
+      _postRequestCount++;
+    }
+  }
+
+  void _startCacheRevalidation() {
+    _cacheRevalidationTimer = Timer.periodic(
+      _cacheRevalidationInterval,
+      (_) async {
+        await _revalidateCache();
+      },
+    );
+  }
+
+  Future<void> _revalidateCache() async {
+    for (final key in _cache.keys) {
+      final cachedData = _cache[key];
+      if (cachedData != null) {
+        final updatedData = await _makeRequest(key, bypassCache: true);
+        _cache[key] = updatedData;
+      }
+    }
+  }
+
+  Future<dynamic> _makeRequest(String url, {bool bypassCache = false}) async {
+    if (!bypassCache && _cache.containsKey(url)) {
+      return _cache[url];
+    }
+
+    await _checkRateLimit('GET');
+
+    final response = await http.get(Uri.parse(url), headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch data from $url');
+    }
+
+    final data = json.decode(response.body);
+    _cache[url] = data;
+
+    return data;
+  }
+
+  Map<String, dynamic> _buildObjectForMeta(Meta meta) {
+    if (meta.type == "movie") {
+      return {
+        'movie': {
+          'title': meta.name,
+          'year': meta.year,
+          'ids': {
+            'imdb': meta.imdbId ?? meta.id,
+          },
+        },
+      };
+    } else {
+      return {
+        "show": {
+          "title": meta.name,
+          "year": meta.year,
+          "ids": {
+            "imdb": meta.imdbId ?? meta.id,
+          }
+        },
+        "episode": {
+          "season": meta.nextSeason,
+          "number": meta.nextEpisode,
+        },
+      };
+    }
+  }
+
   Future<List<LibraryItem>> getUpNextSeries() async {
     await initStremioService();
 
@@ -83,32 +193,18 @@ class TraktService {
     }
 
     try {
-      final watchedResponse = await http.get(
-        Uri.parse('$_baseUrl/sync/watched/shows'),
-        headers: headers,
+      final List<dynamic> watchedShows = await _makeRequest(
+        '$_baseUrl/sync/watched/shows',
       );
-
-      if (watchedResponse.statusCode != 200) {
-        throw ArgumentError('Failed to fetch watched shows');
-      }
-
-      final watchedShows = json.decode(watchedResponse.body) as List;
 
       final progressFutures = watchedShows.map((show) async {
         final showId = show['show']['ids']['trakt'];
         final imdb = show['show']['ids']['imdb'];
 
         try {
-          final progressResponse = await http.get(
-            Uri.parse('$_baseUrl/shows/$showId/progress/watched'),
-            headers: headers,
+          final progress = await _makeRequest(
+            '$_baseUrl/shows/$showId/progress/watched',
           );
-
-          if (progressResponse.statusCode != 200) {
-            return null;
-          }
-
-          final progress = json.decode(progressResponse.body);
 
           final nextEpisode = progress['next_episode'];
 
@@ -155,16 +251,7 @@ class TraktService {
     }
 
     try {
-      final watchedResponse = await http.get(
-        Uri.parse('$_baseUrl/sync/playback'),
-        headers: headers,
-      );
-
-      if (watchedResponse.statusCode != 200) {
-        throw Exception('Failed to fetch watched movies');
-      }
-
-      final continueWatching = json.decode(watchedResponse.body) as List;
+      final continueWatching = await _makeRequest('$_baseUrl/sync/playback');
 
       final Map<String, double> progress = {};
 
@@ -232,19 +319,9 @@ class TraktService {
     }
 
     try {
-      final scheduleResponse = await http.get(
-        Uri.parse(
-          '$_baseUrl/calendars/my/shows/${DateFormat('yyyy-MM-dd').format(DateTime.now())}/7',
-        ),
-        headers: headers,
+      final List<dynamic> scheduleShows = await _makeRequest(
+        '$_baseUrl/calendars/my/shows/${DateFormat('yyyy-MM-dd').format(DateTime.now())}/7',
       );
-
-      if (scheduleResponse.statusCode != 200) {
-        print('Failed to fetch upcoming schedule');
-        throw Error();
-      }
-
-      final scheduleShows = json.decode(scheduleResponse.body) as List;
 
       final result = await stremioService!.getBulkItem(
         scheduleShows.map((show) {
@@ -272,16 +349,7 @@ class TraktService {
     }
 
     try {
-      final watchlistResponse = await http.get(
-        Uri.parse('$_baseUrl/sync/watchlist'),
-        headers: headers,
-      );
-
-      if (watchlistResponse.statusCode != 200) {
-        throw Exception('Failed to fetch watchlist');
-      }
-
-      final watchlistItems = json.decode(watchlistResponse.body) as List;
+      final watchlistItems = await _makeRequest('$_baseUrl/sync/watchlist');
 
       final result = await stremioService!.getBulkItem(
         watchlistItems
@@ -317,17 +385,8 @@ class TraktService {
     }
 
     try {
-      final recommendationsResponse = await http.get(
-        Uri.parse('$_baseUrl/recommendations/shows'),
-        headers: headers,
-      );
-
-      if (recommendationsResponse.statusCode != 200) {
-        throw Exception('Failed to fetch show recommendations');
-      }
-
       final recommendedShows =
-          json.decode(recommendationsResponse.body) as List;
+          await _makeRequest('$_baseUrl/recommendations/shows');
 
       final result = (await stremioService!.getBulkItem(
         recommendedShows
@@ -363,17 +422,8 @@ class TraktService {
     }
 
     try {
-      final recommendationsResponse = await http.get(
-        Uri.parse('$_baseUrl/recommendations/movies'),
-        headers: headers,
-      );
-
-      if (recommendationsResponse.statusCode != 200) {
-        throw Exception('Failed to fetch movie recommendations');
-      }
-
       final recommendedMovies =
-          json.decode(recommendationsResponse.body) as List;
+          await _makeRequest('$_baseUrl/recommendations/movies');
 
       final result = await stremioService!.getBulkItem(
         recommendedMovies
@@ -421,16 +471,7 @@ class TraktService {
   }
 
   Future<int?> getTraktIdForMovie(String imdb) async {
-    final id = await http.get(
-      Uri.parse("$_baseUrl/search/imdb/$imdb"),
-      headers: headers,
-    );
-
-    if (id.statusCode != 200) {
-      throw ArgumentError("failed to get trakt id");
-    }
-
-    final body = jsonDecode(id.body) as List<dynamic>;
+    final body = await _makeRequest("$_baseUrl/search/imdb/$imdb");
 
     if (body.isEmpty) {
       return null;
@@ -457,6 +498,8 @@ class TraktService {
       return;
     }
 
+    await _checkRateLimit('POST');
+
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/scrobble/start'),
@@ -472,6 +515,9 @@ class TraktService {
         print(response.body);
         throw Exception('Failed to start scrobbling');
       }
+
+      _cache.remove('$_baseUrl/sync/watched/shows');
+      _cache.remove('$_baseUrl/sync/playback');
     } catch (e, stack) {
       print('Error starting scrobbling: $e');
       print(stack);
@@ -486,6 +532,8 @@ class TraktService {
     if (!isEnabled()) {
       return;
     }
+
+    await _checkRateLimit('POST');
 
     try {
       final response = await http.post(
@@ -507,34 +555,6 @@ class TraktService {
     }
   }
 
-  Map<String, dynamic> _buildObjectForMeta(Meta meta) {
-    if (meta.type == "movie") {
-      return {
-        'movie': {
-          'title': meta.name,
-          'year': meta.year,
-          'ids': {
-            'imdb': meta.imdbId ?? meta.id,
-          },
-        },
-      };
-    } else {
-      return {
-        "show": {
-          "title": meta.name,
-          "year": meta.year,
-          "ids": {
-            "imdb": meta.imdbId ?? meta.id,
-          }
-        },
-        "episode": {
-          "season": meta.nextSeason,
-          "number": meta.nextEpisode,
-        },
-      };
-    }
-  }
-
   Future<void> stopScrobbling({
     required Meta meta,
     required double progress,
@@ -542,6 +562,8 @@ class TraktService {
     if (!isEnabled()) {
       return;
     }
+
+    await _checkRateLimit('POST');
 
     try {
       final response = await http.post(
@@ -557,6 +579,9 @@ class TraktService {
         print(response.statusCode);
         throw Exception('Failed to stop scrobbling');
       }
+
+      _cache.remove('$_baseUrl/sync/watched/shows');
+      _cache.remove('$_baseUrl/sync/playback');
     } catch (e, stack) {
       print('Error stopping scrobbling: $e');
       print(stack);
@@ -571,16 +596,7 @@ class TraktService {
 
     try {
       if (meta.type == "series") {
-        final response = await http.get(
-          Uri.parse("$_baseUrl/sync/playback/episodes"),
-          headers: headers,
-        );
-
-        if (response.statusCode != 200) {
-          return [];
-        }
-
-        final body = jsonDecode(response.body) as List;
+        final body = await _makeRequest("$_baseUrl/sync/playback/episodes");
 
         final List<TraktProgress> result = [];
 
@@ -621,16 +637,7 @@ class TraktService {
 
         return result;
       } else {
-        final response = await http.get(
-          Uri.parse("$_baseUrl/sync/playback/movies"),
-          headers: headers,
-        );
-
-        if (response.statusCode != 200) {
-          return [];
-        }
-
-        final body = jsonDecode(response.body) as List;
+        final body = await _makeRequest("$_baseUrl/sync/playback/movies");
 
         for (final item in body) {
           if (item["type"] != "movie") {

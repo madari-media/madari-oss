@@ -47,6 +47,28 @@ class _HomeTabPageState extends State<HomeTabPage> {
     ],
   );
 
+  final Map<int, GlobalKey<TraktContainerState>> _keyMap = {};
+
+  GlobalKey<TraktContainerState> _getKey(int id) {
+    return _keyMap.putIfAbsent(
+      id,
+      () => GlobalKey<TraktContainerState>(),
+    );
+  }
+
+  Future<void> _onRefresh() async {
+    final List<Future> promises = [];
+    for (final item in traktLibraries) {
+      final state = _getKey(traktLibraries.indexOf(item)).currentState;
+
+      if (state == null) continue;
+
+      promises.add(state.refresh());
+    }
+
+    await Future.wait(promises);
+  }
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -91,6 +113,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
           setState(() {
             traktLibraries = getTraktLibraries();
           });
+          await _onRefresh();
           return;
         },
         child: QueryBuilder(
@@ -123,6 +146,8 @@ class _HomeTabPageState extends State<HomeTabPage> {
                       setState(() {
                         traktLibraries = getTraktLibraries();
                       });
+
+                      await _onRefresh();
                     },
                   ),
                 ),
@@ -140,6 +165,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
                     final category = traktLibraries[index];
 
                     return TraktContainer(
+                      key: _getKey(index),
                       loadId: category,
                     );
                   }

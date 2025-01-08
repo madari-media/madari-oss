@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -324,9 +325,15 @@ class Meta extends LibraryItem {
   }
 
   Video? get currentVideo {
-    return videos?.firstWhere((episode) {
-      return nextEpisode == episode.episode && nextSeason == episode.season;
-    });
+    if (type == "movie") {
+      return null;
+    }
+
+    return videos?.firstWhereOrNull(
+      (episode) {
+        return nextEpisode == episode.episode && nextSeason == episode.season;
+      },
+    );
   }
 
   Meta({
