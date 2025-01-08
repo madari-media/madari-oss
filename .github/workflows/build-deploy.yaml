@@ -86,6 +86,10 @@ jobs:
         run: |
           echo "${{ secrets.STORE_FILE_BASE64 }}" | base64 --decode > android/app/key.jks
 
+      - run: |
+          sudo apt install ninja-build
+        name: install ninja
+
       - name: Build Android
         run: make build_android
 
