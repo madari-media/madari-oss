@@ -21,6 +21,7 @@ import '../types/doc_source.dart';
 import 'video_viewer/desktop_video_player.dart';
 import 'video_viewer/mobile_video_player.dart';
 
+
 class VideoViewer extends StatefulWidget {
   final DocSource source;
   final LibraryItem? meta;
@@ -62,11 +63,6 @@ class _VideoViewerState extends State<VideoViewer> {
 
   saveWatchHistory() {
     final duration = player.state.duration.inSeconds;
-
-    if (duration < 30) {
-      return;
-    }
-
     final position = player.state.position.inSeconds;
     final progress = duration > 0 ? (position / duration * 100).round() : 0;
 
@@ -191,7 +187,6 @@ class _VideoViewerState extends State<VideoViewer> {
 
     if ((progress ?? []).isEmpty) {
       player.play();
-      return;
     }
 
     final duration = Duration(
@@ -203,11 +198,50 @@ class _VideoViewerState extends State<VideoViewer> {
 
     player.seek(duration);
     player.play();
+
+    addListenerForTrakt();
   }
 
   List<StreamSubscription> listener = [];
 
+  bool traktIntegration = false;
+
+  addListenerForTrakt() {
+    if (traktIntegration == true) {
+      return;
+    }
+
+    traktIntegration = true;
+
+    final streams = player.stream.playing.listen((item) {
+      if (item) {
+        TraktService.instance!.startScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      } else {
+        TraktService.instance!.pauseScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      }
+    });
+
+    final oneMore = player.stream.completed.listen((item) {
+      if (item && player.state.duration.inSeconds > 10) {
+        TraktService.instance!.stopScrobbling(
+          meta: widget.meta as types.Meta,
+          progress: currentProgressInPercentage,
+        );
+      }
+    });
+
+    listener.add(streams);
+    listener.add(oneMore);
+  }
+
   PlaybackConfig config = getPlaybackConfig();
+
 
   bool defaultConfigSelected = false;
 
@@ -385,7 +419,7 @@ class _VideoViewerState extends State<VideoViewer> {
     _streamListen.cancel();
     _duration.cancel();
 
-    if (widget.meta is types.Meta && player.state.duration.inSeconds > 30) {
+    if (traktIntegration && widget.meta is types.Meta) {
       TraktService.instance!.stopScrobbling(
         meta: widget.meta as types.Meta,
         progress: currentProgressInPercentage,
@@ -421,13 +455,39 @@ class _VideoViewerState extends State<VideoViewer> {
         setState(() {
           isScaled = !isScaled;
         });
+
+
       },
     );
-
+    String subtitleStyleName = config.subtitleStyle ?? 'Normal';
+   String  subtitleStyleColor = config.subtitleColor ?? 'white';
+    double subtitleSize = config.subtitleSize ;
+    Color hexToColor(String hexColor) {
+      final hexCode = hexColor.replaceAll('#', '');
+      return Color(int.parse('0x$hexCode'));
+    }
+    FontStyle getFontStyleFromString(String styleName) {
+      switch (styleName.toLowerCase()) {
+        case 'italic':
+          return FontStyle.italic;
+        case 'normal': // Explicitly handle 'normal' (good practice)
+        default: // Default case for any other string or null
+          return FontStyle.normal;
+      }
+    }
+    FontStyle currentFontStyle = getFontStyleFromString(subtitleStyleName);
     return MaterialVideoControlsTheme(
       fullscreen: mobile,
       normal: mobile,
       child: Video(
+             subtitleViewConfiguration: SubtitleViewConfiguration(
+              style: TextStyle(color: hexToColor(subtitleStyleColor),
+       // style: TextStyle(color:
+              fontSize: subtitleSize,
+                 // fontSize: 60.0,
+                  fontStyle: currentFontStyle,
+              fontWeight: FontWeight.bold),
+          ),
         fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
         pauseUponEnteringBackgroundMode: true,
         key: key,
@@ -436,8 +496,9 @@ class _VideoViewerState extends State<VideoViewer> {
           if (context.mounted) Navigator.of(context).pop();
         },
         controller: controller,
-        controls: MaterialVideoControls,
+        controls: MaterialVideoControls
       ),
+
     );
   }
 
@@ -523,10 +584,12 @@ class _VideoViewerState extends State<VideoViewer> {
                         languages.containsKey(title)
                             ? languages[title]!
                             : title,
+
                       ),
                       selected:
                           player.state.track.subtitle.id == currentItem.id,
                       onTap: () {
+
                         player.setSubtitleTrack(currentItem);
                         Navigator.pop(context);
                       },

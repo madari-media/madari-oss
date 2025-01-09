@@ -24,6 +24,7 @@ Future<Map<String, String>> loadLanguages(BuildContext context) async {
   return availableLanguages;
 }
 
+
 PlaybackConfig getPlaybackConfig() {
   final user = AppEngine.engine.pb.authStore.record;
   if (user == null) {
@@ -52,7 +53,10 @@ class PlaybackConfig {
   @JsonKey(defaultValue: false)
   final bool externalPlayer;
   final Map<String, String?>? externalPlayerId;
-
+  final String? subtitleStyle;
+  final String? subtitleColor;
+  @JsonKey(defaultValue: 10.0)
+  final double subtitleSize;
   PlaybackConfig({
     required this.autoPlay,
     required this.playbackSpeed,
@@ -61,6 +65,9 @@ class PlaybackConfig {
     required this.externalPlayer,
     required this.disableSubtitle,
     this.externalPlayerId,
+    this.subtitleStyle,
+    this.subtitleColor,
+    required this.subtitleSize,
   });
 
   String? get currentPlayerPackage {
