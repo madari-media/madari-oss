@@ -385,9 +385,7 @@ class _VideoViewerState extends State<VideoViewer> {
     _streamListen.cancel();
     _duration.cancel();
 
-    if (traktIntegration &&
-        widget.meta is types.Meta &&
-        player.state.duration.inSeconds > 30) {
+    if (widget.meta is types.Meta && player.state.duration.inSeconds > 30) {
       TraktService.instance!.stopScrobbling(
         meta: widget.meta as types.Meta,
         progress: currentProgressInPercentage,
