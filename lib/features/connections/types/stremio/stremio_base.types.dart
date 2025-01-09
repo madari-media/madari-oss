@@ -316,6 +316,8 @@ class Meta extends LibraryItem {
 
   final dynamic externalIds;
 
+  bool forceRegularMode;
+
   String get imdbRating {
     return (imdbRating_ ?? "").toString();
   }
@@ -344,6 +346,7 @@ class Meta extends LibraryItem {
     this.cast,
     this.traktId,
     this.country,
+    this.forceRegularMode = false,
     this.externalIds,
     this.description,
     this.genre,

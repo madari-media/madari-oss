@@ -43,7 +43,7 @@ class StremioCard extends StatelessWidget {
               },
             );
           },
-          child: meta.nextSeason == null || meta.progress != null
+          child: (meta.nextSeason == null || meta.progress != null)
               ? _buildRegular(context, meta)
               : _buildWideCard(context, meta),
         ),
@@ -69,7 +69,9 @@ class StremioCard extends StatelessWidget {
       decoration: BoxDecoration(
         image: DecorationImage(
           image: CachedNetworkImageProvider(
-            "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(meta.background!)}@webp",
+            "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(
+              meta.currentVideo?.thumbnail ?? meta.background!,
+            )}@webp",
             imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
           ),
           fit: BoxFit.cover,
@@ -248,7 +250,8 @@ class StremioCard extends StatelessWidget {
   }
 
   _buildRegular(BuildContext context, Meta meta) {
-    final backgroundImage = getBackgroundImage(meta);
+    final backgroundImage =
+        meta.poster ?? meta.logo ?? getBackgroundImage(meta);
 
     return Hero(
       tag: "$prefix${meta.type}${item.id}",
@@ -267,16 +270,18 @@ class StremioCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    color: Colors.white,
+                    color: Colors.grey,
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        meta.name ?? "No name",
+                        meta.name ?? "No title",
                         style:
                             Theme.of(context).textTheme.labelMedium?.copyWith(
                                   color: Colors.black54,
                                   fontWeight: FontWeight.w600,
                                 ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),

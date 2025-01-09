@@ -257,7 +257,6 @@ class TraktService {
 
       final result = await stremioService!.getBulkItem(
         continueWatching
-            .sublist(0, 20)
             .map((movie) {
               try {
                 if (movie['type'] == 'episode') {
@@ -364,6 +363,14 @@ class TraktService {
               try {
                 final type = item['type'];
                 final imdb = item[type]['ids']['imdb'];
+
+                if (type == "show") {
+                  return Meta(
+                    type: "series",
+                    id: imdb,
+                  );
+                }
+
                 return Meta(
                   type: type,
                   id: imdb,

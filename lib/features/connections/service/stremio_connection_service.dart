@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_query/cached_query.dart';
@@ -37,7 +38,7 @@ class StremioConnectionService extends BaseConnectionService {
               refetchDuration: (id as Meta).type == "movie"
                   ? const Duration(days: 30)
                   : const Duration(
-                      minutes: 10,
+                      days: 1,
                     ),
             ),
             queryFn: () async {
@@ -78,8 +79,13 @@ class StremioConnectionService extends BaseConnectionService {
                   ),
                 );
 
-                return StreamMetaResponse.fromJson(jsonDecode(result.body))
-                    .meta;
+                final item = jsonDecode(result.body);
+
+                if (item['meta'] == null) {
+                  return null;
+                }
+
+                return StreamMetaResponse.fromJson(item).meta;
               }
 
               return null;
@@ -211,12 +217,20 @@ class StremioConnectionService extends BaseConnectionService {
       ids.map(
         (res) async {
           return getItemById(res).then((item) {
+            if (item == null) {
+              return null;
+            }
+
             return (item as Meta).copyWith(
               progress: (res as Meta).progress,
               nextSeason: res.nextSeason,
               nextEpisode: res.nextEpisode,
               nextEpisodeTitle: res.nextEpisodeTitle,
             );
+          }).catchError((err, stack) {
+            print(err);
+            print(stack);
+            return null;
           });
         },
       ),

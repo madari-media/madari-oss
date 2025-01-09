@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/trakt/service/trakt.service.dart';
@@ -23,11 +25,26 @@ class TraktContainerState extends State<TraktContainer> {
   bool _isLoading = false;
   String? _error;
 
+  late Timer _timer;
+
   @override
   void initState() {
     super.initState();
     _cacheService = TraktCacheService();
     _loadData();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 30),
+      (timer) {
+        _loadData();
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _timer.cancel();
   }
 
   Future<void> _loadData() async {
@@ -38,15 +55,19 @@ class TraktContainerState extends State<TraktContainer> {
 
     try {
       final items = await _cacheService.fetchData(widget.loadId);
-      setState(() {
-        _cachedItems = items;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _cachedItems = items;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
