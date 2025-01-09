@@ -62,6 +62,11 @@ class _VideoViewerState extends State<VideoViewer> {
 
   saveWatchHistory() {
     final duration = player.state.duration.inSeconds;
+
+    if (duration < 30) {
+      return;
+    }
+
     final position = player.state.position.inSeconds;
     final progress = duration > 0 ? (position / duration * 100).round() : 0;
 
@@ -186,6 +191,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
     if ((progress ?? []).isEmpty) {
       player.play();
+      return;
     }
 
     final duration = Duration(
@@ -197,47 +203,9 @@ class _VideoViewerState extends State<VideoViewer> {
 
     player.seek(duration);
     player.play();
-
-    addListenerForTrakt();
   }
 
   List<StreamSubscription> listener = [];
-
-  bool traktIntegration = false;
-
-  addListenerForTrakt() {
-    if (traktIntegration == true) {
-      return;
-    }
-
-    traktIntegration = true;
-
-    final streams = player.stream.playing.listen((item) {
-      if (item) {
-        TraktService.instance!.startScrobbling(
-          meta: widget.meta as types.Meta,
-          progress: currentProgressInPercentage,
-        );
-      } else {
-        TraktService.instance!.pauseScrobbling(
-          meta: widget.meta as types.Meta,
-          progress: currentProgressInPercentage,
-        );
-      }
-    });
-
-    final oneMore = player.stream.completed.listen((item) {
-      if (item && player.state.duration.inSeconds > 10) {
-        TraktService.instance!.stopScrobbling(
-          meta: widget.meta as types.Meta,
-          progress: currentProgressInPercentage,
-        );
-      }
-    });
-
-    listener.add(streams);
-    listener.add(oneMore);
-  }
 
   PlaybackConfig config = getPlaybackConfig();
 
@@ -417,7 +385,9 @@ class _VideoViewerState extends State<VideoViewer> {
     _streamListen.cancel();
     _duration.cancel();
 
-    if (traktIntegration && widget.meta is types.Meta) {
+    if (traktIntegration &&
+        widget.meta is types.Meta &&
+        player.state.duration.inSeconds > 30) {
       TraktService.instance!.stopScrobbling(
         meta: widget.meta as types.Meta,
         progress: currentProgressInPercentage,

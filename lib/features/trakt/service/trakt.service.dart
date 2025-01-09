@@ -606,7 +606,6 @@ class TraktService {
       );
 
       if (response.statusCode != 201) {
-        print(response.statusCode);
         throw Exception('Failed to stop scrobbling');
       }
 
