@@ -1,7 +1,9 @@
+import 'package:cached_query/cached_query.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/settings/screen/trakt_integration_screen.dart';
+import 'package:madari_client/features/trakt/service/trakt.service.dart';
 import 'package:madari_client/features/watch_history/service/zeee_watch_history.dart';
 import 'package:madari_client/pages/sign_in.page.dart';
 
@@ -73,6 +75,20 @@ class MoreContainer extends StatelessWidget {
                   builder: (context) => const TraktIntegration(),
                 ),
               ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.clear_all),
+              title: const Text("Clear Cache"),
+              onTap: () {
+                TraktService.instance?.clearCache();
+                CachedQuery.instance.deleteCache();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Cache cleared"),
+                  ),
+                );
+              },
             ),
             _buildListItem(
               context,

@@ -69,6 +69,24 @@ class _VideoViewerState extends State<VideoViewer> {
       return;
     }
 
+    if (widget.meta is types.Meta) {
+      try {
+        if (player.state.playing) {
+          TraktService.instance!.startScrobbling(
+            meta: widget.meta as types.Meta,
+            progress: progress.toDouble(),
+          );
+        } else {
+          TraktService.instance!.stopScrobbling(
+            meta: widget.meta as types.Meta,
+            progress: progress.toDouble(),
+          );
+        }
+      } catch (e) {
+        print(e);
+      }
+    }
+
     zeeeWatchHistory!.saveWatchHistory(
       history: WatchHistory(
         id: _source.id,

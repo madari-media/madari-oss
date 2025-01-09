@@ -34,6 +34,10 @@ class TraktService {
   final Map<String, dynamic> _cache = {};
   Timer? _cacheRevalidationTimer;
 
+  clearCache() {
+    _cache.clear();
+  }
+
   static ensureInitialized() async {
     if (_instance != null) {
       return _instance;
@@ -90,6 +94,8 @@ class TraktService {
     return AppEngine.engine.pb.authStore.record!.getStringValue("trakt_token");
   }
 
+  List<String> debugLogs = [];
+
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
         'Accept-Content': 'application/json',
@@ -108,11 +114,13 @@ class TraktService {
 
     if (method == 'GET') {
       if (_getRequestCount >= _authedGetLimit) {
+        debugLogs.add("GET rate limit exceeded");
         throw Exception('GET rate limit exceeded');
       }
       _getRequestCount++;
     } else if (method == 'POST' || method == 'PUT' || method == 'DELETE') {
       if (_postRequestCount >= _authedPostLimit) {
+        debugLogs.add("GET rate limit exceeded");
         throw Exception('POST/PUT/DELETE rate limit exceeded');
       }
       _postRequestCount++;
@@ -148,8 +156,14 @@ class TraktService {
     final response = await http.get(Uri.parse(url), headers: headers);
 
     if (response.statusCode != 200) {
+      debugLogs.add(
+          "Failed to fetch data from ${url.replaceFirst("https://api.trakt.tv/", "")} ${response.statusCode}");
       throw Exception('Failed to fetch data from $url');
     }
+
+    debugLogs.add(
+      "Success calling api ${url.replaceFirst("https://api.trakt.tv/", "")}",
+    );
 
     final data = json.decode(response.body);
     _cache[url] = data;
