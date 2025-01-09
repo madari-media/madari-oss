@@ -1,4 +1,4 @@
-.PHONY: build schema build_web build_mac build_android build_windows build_ipa build_linux
+.PHONY: build schema build_web build_mac build_android build_windows build_ipa build_linux build_android_tv
 
 BUILD_ID := $(or $(GITHUB_RUN_ID),dev)
 
@@ -16,6 +16,9 @@ build_mac:
 
 build_android:
 	flutter build apk --release --dart-define=BUILD_ID=$(BUILD_ID)
+
+build_android_tv:
+	flutter build apk --release --dart-define=BUILD_ID=$(BUILD_ID) --dart-define=IS_TV=true
 
 build_windows:
 	flutter build windows --release --dart-define=BUILD_ID=$(BUILD_ID)

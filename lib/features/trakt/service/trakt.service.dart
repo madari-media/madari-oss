@@ -158,7 +158,7 @@ class TraktService {
     if (response.statusCode != 200) {
       debugLogs.add(
           "Failed to fetch data from ${url.replaceFirst("https://api.trakt.tv/", "")} ${response.statusCode}");
-      throw Exception('Failed to fetch data from $url');
+      throw Exception('Failed to fetch data from $url ${response.statusCode}');
     }
 
     debugLogs.add(
@@ -319,6 +319,8 @@ class TraktService {
       }).toList();
     } catch (e, stack) {
       print('Error fetching up next movies: $e');
+      debugLogs.add('Error fetching up next movies: $e');
+      debugLogs.add(stack.toString());
       print(stack);
       return [];
     }

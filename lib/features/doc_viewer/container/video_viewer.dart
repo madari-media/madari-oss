@@ -74,16 +74,17 @@ class _VideoViewerState extends State<VideoViewer> {
         if (player.state.playing) {
           TraktService.instance!.startScrobbling(
             meta: widget.meta as types.Meta,
-            progress: progress.toDouble(),
+            progress: currentProgressInPercentage,
           );
         } else {
           TraktService.instance!.stopScrobbling(
             meta: widget.meta as types.Meta,
-            progress: progress.toDouble(),
+            progress: currentProgressInPercentage,
           );
         }
       } catch (e) {
         print(e);
+        TraktService.instance!.debugLogs.add(e.toString());
       }
     }
 
@@ -163,10 +164,18 @@ class _VideoViewerState extends State<VideoViewer> {
     });
   }
 
+  bool canCallOnce = false;
+
   setDurationFromTrakt() async {
     if (player.state.duration.inSeconds < 2) {
       return;
     }
+
+    if (canCallOnce) {
+      return;
+    }
+
+    canCallOnce = true;
 
     if (!TraktService.instance!.isEnabled() || traktProgress == null) {
       player.play();
@@ -287,7 +296,7 @@ class _VideoViewerState extends State<VideoViewer> {
       });
     }
 
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       saveWatchHistory();
     });
 
@@ -389,13 +398,6 @@ class _VideoViewerState extends State<VideoViewer> {
 
   @override
   void dispose() {
-    if (traktIntegration && widget.meta is types.Meta) {
-      TraktService.instance!.stopScrobbling(
-        meta: widget.meta as types.Meta,
-        progress: currentProgressInPercentage,
-      );
-    }
-
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -414,7 +416,16 @@ class _VideoViewerState extends State<VideoViewer> {
     _streamComplete.cancel();
     _streamListen.cancel();
     _duration.cancel();
+
+    if (traktIntegration && widget.meta is types.Meta) {
+      TraktService.instance!.stopScrobbling(
+        meta: widget.meta as types.Meta,
+        progress: currentProgressInPercentage,
+      );
+    }
+
     player.dispose();
+
     super.dispose();
   }
 
