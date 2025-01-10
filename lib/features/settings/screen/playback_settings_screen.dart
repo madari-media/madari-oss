@@ -110,7 +110,12 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   }
 
   void _loadPlaybackSettings() {
-    final playbackConfig = getPlaybackConfig();
+    PlaybackConfig playbackConfig;
+    try {
+      playbackConfig = getPlaybackConfig();
+    } catch (e) {
+      playbackConfig = PlaybackConfig.fromJson({});
+    }
 
     _autoPlay = playbackConfig.autoPlay ?? true;
     _playbackSpeed = playbackConfig.playbackSpeed.toDouble();
