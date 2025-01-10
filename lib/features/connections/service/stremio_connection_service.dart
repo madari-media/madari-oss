@@ -484,9 +484,6 @@ class StremioConnectionService extends BaseConnectionService {
 
     String title = meta.name ?? item.title ?? "No title";
 
-    if (season != null) title += " S$season";
-    if (episode != null) title += " E$episode";
-
     DocSource? source;
 
     if (item.url != null) {

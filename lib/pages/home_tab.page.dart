@@ -57,6 +57,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
   }
 
   Future<void> _onRefresh() async {
+    TraktService.instance?.clearCache();
     final List<Future> promises = [];
     for (final item in traktLibraries) {
       final state = _getKey(traktLibraries.indexOf(item)).currentState;

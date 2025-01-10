@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/engine/engine.dart';
 import 'package:madari_client/features/doc_viewer/container/doc_viewer.dart';
 import 'package:madari_client/features/doc_viewer/types/doc_source.dart';
@@ -27,6 +28,18 @@ void main() async {
   } catch (e) {
     print("Unable");
   }
+
+  Logger.root.level = Level.ALL;
+
+  Logger.root.onRecord.listen((record) {
+    print('${record.level.name}: ${record.time}: ${record.message}');
+    if (record.error != null) {
+      print('Error: ${record.error}');
+    }
+    if (record.stackTrace != null) {
+      print('StackTrace: ${record.stackTrace}');
+    }
+  });
 
   try {
     CachedQuery.instance.configFlutter(

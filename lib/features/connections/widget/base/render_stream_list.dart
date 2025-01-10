@@ -303,18 +303,33 @@ class _RenderStreamListState extends State<RenderStreamList> {
               }
             }
 
+            int? season;
+            int? episode;
+
+            if (widget.season != null) {
+              season = int.parse(widget.season!);
+            } else if ((widget.id as Meta).nextSeason != null) {
+              season = (widget.id as Meta).nextSeason!;
+            }
+
+            if (widget.episode != null) {
+              episode = int.parse(widget.episode!);
+            } else if ((widget.id as Meta).nextEpisode != null) {
+              episode = (widget.id as Meta).nextEpisode!;
+            }
+
+            final meta = (widget.id as Meta).copyWith(
+              nextSeason: season,
+              nextEpisode: episode,
+            );
+
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (ctx) => DocViewer(
                   source: item.source,
                   service: widget.service,
-                  meta: widget.season != null && widget.episode != null
-                      ? (widget.id as Meta).copyWith(
-                          nextSeason: int.parse(widget.season!),
-                          nextEpisode: int.parse(widget.episode!),
-                        )
-                      : widget.id,
-                  season: widget.season,
+                  meta: meta,
+                  season: meta.nextSeason?.toString(),
                   progress: widget.progress,
                 ),
               ),
