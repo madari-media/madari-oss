@@ -1,13 +1,13 @@
 import 'dart:async';
 
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:madari_client/utils/external_player.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../../../engine/engine.dart';
 import '../../../utils/load_language.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
-import 'package:flutter/services.dart';
 
 class PlaybackSettingsScreen extends StatefulWidget {
   const PlaybackSettingsScreen({super.key});
@@ -20,7 +20,6 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   String? _error;
   Timer? _saveDebouncer;
 
-  // Playback settings
   bool _autoPlay = true;
   double _playbackSpeed = 1.0;
   double _subtitleSize = 10.0;
@@ -31,9 +30,10 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   bool _disabledSubtitle = false;
   Map<String, String> _availableLanguages = {};
   final List<String> _subtitleStyle = [
-    'Normal',
-    'Italic',
+    'normal',
+    'italic',
   ];
+  String? _selectedSubtitleStyle;
   String colorToHex(Color color) {
     return '#${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
   }
@@ -43,7 +43,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     return Color(int.parse('0x$hexCode'));
   }
 
-  Color _selectedSubtitleColor = Colors.yellow;
+  Color _selectedSubtitleColor = Colors.white;
 
   _showColorPickerDialog(BuildContext context) async {
     Color? color = await showDialog(
@@ -53,6 +53,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           title: const Text('Pick a Subtitle Color'),
           content: SingleChildScrollView(
             child: ColorPicker(
+              padding: const EdgeInsets.all(0),
               color: _selectedSubtitleColor,
               onColorChanged: (Color color) {
                 _selectedSubtitleColor = color;
@@ -70,8 +71,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context)
-                    .pop(_selectedSubtitleColor); // Return the color
+                Navigator.of(context).pop(_selectedSubtitleColor);
               },
               child: const Text('OK'),
             ),
@@ -122,11 +122,11 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             ? playbackConfig.externalPlayerId![currentPlatform]
             : null;
     _disabledSubtitle = playbackConfig.disableSubtitle;
-    final subtitleStyle = playbackConfig.subtitleStyle; // Get saved style
-    _subtitleStyle.removeWhere((style) =>
-        style == subtitleStyle); // Remove saved style from dropdown options
-    _subtitleStyle.insert(0, subtitleStyle ?? "Normal");
-    _selectedSubtitleColor = hexToColor(playbackConfig.subtitleColor!);
+    _selectedSubtitleStyle =
+        (playbackConfig.subtitleStyle ?? "normal").toLowerCase();
+    _selectedSubtitleColor = playbackConfig.subtitleColor != null
+        ? hexToColor(playbackConfig.subtitleColor!)
+        : Colors.white;
     _subtitleSize = playbackConfig.subtitleSize.toDouble();
   }
 
@@ -167,7 +167,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'externalPlayer': _enableExternalPlayer,
           'externalPlayerId': extranalId,
           'disableSubtitle': _disabledSubtitle,
-          'subtitleStyle': _subtitleStyle[0],
+          'subtitleStyle': _subtitleStyle,
           'subtitleColor': colorToHex(_selectedSubtitleColor),
           'subtitleSize': _subtitleSize,
         },
@@ -204,7 +204,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     final dropdownstyle = _subtitleStyle.map((String value) {
       return DropdownMenuItem<String>(
         value: value,
-        child: Text(value),
+        child: Text(value.capitalize),
       );
     }).toList();
     if (_error != null) {
@@ -299,11 +299,10 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(12.0),
-              child: Material( // Center the text
-
-                child: ConstrainedBox( // Prevent overflow
+              child: Material(
+                child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.8, // 80% of screen width
+                    maxWidth: MediaQuery.of(context).size.width * 0.8,
                   ),
                   child: Text(
                     'Sample Text',
@@ -314,69 +313,68 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
                       fontStyle: _subtitleStyle[0].toLowerCase() == 'italic'
                           ? FontStyle.italic
                           : FontStyle.normal,
-
                     ),
                   ),
                 ),
               ),
             ),
-          ListTile(
-            title: const Text('Subtitle Style'),
-
-            trailing: DropdownButton<String>(
-              value: _subtitleStyle[0],
-              items: dropdownstyle,
-              onChanged: (value) {
-                HapticFeedback.mediumImpact();
-                if (value != null) {
-                  setState(() {
-                    // <--- Crucial setState here
-                    _subtitleStyle.remove(value);
-                    _subtitleStyle.insert(0, value);
-                  });
-                  _debouncedSave();
-                }
-              },
+            ListTile(
+              title: const Text('Subtitle Style'),
+              trailing: DropdownButton<String>(
+                value: _selectedSubtitleStyle,
+                items: dropdownstyle,
+                onChanged: (value) {
+                  HapticFeedback.mediumImpact();
+                  if (value != null) {
+                    setState(() {
+                      _subtitleStyle.remove(value);
+                      _subtitleStyle.insert(0, value);
+                    });
+                    _debouncedSave();
+                  }
+                },
+              ),
             ),
-          ),
-          ListTile(
-            title: const Text('Subtitle Color'),
-            trailing: GestureDetector(
-              // Use GestureDetector to make the color display tappable
-              onTap: () => _showColorPickerDialog(context),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _selectedSubtitleColor,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: Colors.grey),
+            ListTile(
+              title: const Text('Subtitle Color'),
+              trailing: GestureDetector(
+                // Use GestureDetector to make the color display tappable
+                onTap: () => _showColorPickerDialog(context),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _selectedSubtitleColor,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: Colors.grey),
+                  ),
                 ),
               ),
             ),
-          ),
-          ListTile(
-            title: const Text('Font Size'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Slider(
-                  value: _subtitleSize,
-                  min: 20.0,
-                  max: 60.0,
-                  divisions: 18,
-                  label: '${_subtitleSize.toStringAsFixed(2)}x',
-                  onChanged: (value) {
-                    HapticFeedback.mediumImpact();
-                    setState(() =>
-                        _subtitleSize = double.parse(value.toStringAsFixed(2)));
-                    _debouncedSave();
-                  },
-                ),
-                Text('Current: ${_subtitleSize.toStringAsFixed(2)}x'),
-              ],
+            ListTile(
+              title: const Text('Font Size'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Slider(
+                    value: _subtitleSize,
+                    min: 10.0,
+                    max: 60.0,
+                    divisions: 18,
+                    label: '${_subtitleSize.toStringAsFixed(2)}x',
+                    onChanged: (value) {
+                      HapticFeedback.lightImpact();
+                      setState(
+                        () => _subtitleSize =
+                            double.parse(value.toStringAsFixed(2)),
+                      );
+                      _debouncedSave();
+                    },
+                  ),
+                  Text('Current: ${_subtitleSize.toStringAsFixed(2)}x'),
+                ],
+              ),
             ),
-          ),
           ],
           const Divider(),
           if (!isWeb)
