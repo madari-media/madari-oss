@@ -423,11 +423,33 @@ class _VideoViewerState extends State<VideoViewer> {
         });
       },
     );
-
+       String subtitleStyleName = config.subtitleStyle ?? 'Normal';
+   String  subtitleStyleColor = config.subtitleColor ?? 'white';
+    double subtitleSize = config.subtitleSize ;
+    Color hexToColor(String hexColor) {
+      final hexCode = hexColor.replaceAll('#', '');
+      return Color(int.parse('0x$hexCode'));
+    }
+    FontStyle getFontStyleFromString(String styleName) {
+      switch (styleName.toLowerCase()) {
+        case 'italic':
+          return FontStyle.italic;
+        case 'normal': // Explicitly handle 'normal' (good practice)
+        default: // Default case for any other string or null
+          return FontStyle.normal;
+      }
+    }
+    FontStyle currentFontStyle = getFontStyleFromString(subtitleStyleName);
     return MaterialVideoControlsTheme(
       fullscreen: mobile,
       normal: mobile,
       child: Video(
+        subtitleViewConfiguration: SubtitleViewConfiguration(
+              style: TextStyle(color: hexToColor(subtitleStyleColor),
+              fontSize: subtitleSize,
+                  fontStyle: currentFontStyle,
+              fontWeight: FontWeight.bold),
+          ),
         fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
         pauseUponEnteringBackgroundMode: true,
         key: key,

@@ -6,6 +6,8 @@ import 'package:pocketbase/pocketbase.dart';
 
 import '../../../engine/engine.dart';
 import '../../../utils/load_language.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:flutter/services.dart';
 
 class PlaybackSettingsScreen extends StatefulWidget {
   const PlaybackSettingsScreen({super.key});
@@ -21,13 +23,69 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
   // Playback settings
   bool _autoPlay = true;
   double _playbackSpeed = 1.0;
+  double _subtitleSize = 10.0;
   String _defaultAudioTrack = 'eng';
   String _defaultSubtitleTrack = 'eng';
   bool _enableExternalPlayer = true;
   String? _defaultPlayerId;
   bool _disabledSubtitle = false;
-
   Map<String, String> _availableLanguages = {};
+  final List<String> _subtitleStyle = [
+    'Normal',
+    'Italic',
+  ];
+  String colorToHex(Color color) {
+    return '#${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+  }
+
+  Color hexToColor(String hexColor) {
+    final hexCode = hexColor.replaceAll('#', '');
+    return Color(int.parse('0x$hexCode'));
+  }
+
+  Color _selectedSubtitleColor = Colors.yellow;
+
+  _showColorPickerDialog(BuildContext context) async {
+    Color? color = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Pick a Subtitle Color'),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              color: _selectedSubtitleColor,
+              onColorChanged: (Color color) {
+                _selectedSubtitleColor = color;
+              },
+              // Remove pickerType
+              enableShadesSelection: true,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pop(_selectedSubtitleColor); // Return the color
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+    if (color != null) {
+      setState(() {
+        _selectedSubtitleColor = color;
+      });
+      _debouncedSave(); // Debounced save after color change
+    }
+  }
 
   List<DropdownMenuItem<String>> get dropdown =>
       _availableLanguages.entries.map((item) {
@@ -64,6 +122,12 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
             ? playbackConfig.externalPlayerId![currentPlatform]
             : null;
     _disabledSubtitle = playbackConfig.disableSubtitle;
+    final subtitleStyle = playbackConfig.subtitleStyle; // Get saved style
+    _subtitleStyle.removeWhere((style) =>
+        style == subtitleStyle); // Remove saved style from dropdown options
+    _subtitleStyle.insert(0, subtitleStyle ?? "Normal");
+    _selectedSubtitleColor = hexToColor(playbackConfig.subtitleColor!);
+    _subtitleSize = playbackConfig.subtitleSize.toDouble();
   }
 
   @override
@@ -103,6 +167,9 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'externalPlayer': _enableExternalPlayer,
           'externalPlayerId': extranalId,
           'disableSubtitle': _disabledSubtitle,
+          'subtitleStyle': _subtitleStyle[0],
+          'subtitleColor': colorToHex(_selectedSubtitleColor),
+          'subtitleSize': _subtitleSize,
         },
       };
 
@@ -134,6 +201,12 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dropdownstyle = _subtitleStyle.map((String value) {
+      return DropdownMenuItem<String>(
+        value: value,
+        child: Text(value),
+      );
+    }).toList();
     if (_error != null) {
       return Scaffold(
         body: Center(
@@ -178,6 +251,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
                   divisions: 18,
                   label: '${_playbackSpeed.toStringAsFixed(2)}x',
                   onChanged: (value) {
+                    HapticFeedback.mediumImpact();
                     setState(() => _playbackSpeed =
                         double.parse(value.toStringAsFixed(2)));
                     _debouncedSave();
@@ -209,7 +283,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
               _debouncedSave();
             },
           ),
-          if (!_disabledSubtitle)
+          if (!_disabledSubtitle) ...[
             ListTile(
               title: const Text('Default Subtitle Track'),
               trailing: DropdownButton<String>(
@@ -223,6 +297,87 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
                 },
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Material( // Center the text
+
+                child: ConstrainedBox( // Prevent overflow
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.8, // 80% of screen width
+                  ),
+                  child: Text(
+                    'Sample Text',
+                    textAlign: TextAlign.center, // Center text within its box
+                    style: TextStyle(
+                      fontSize: _subtitleSize / 2,
+                      color: _selectedSubtitleColor,
+                      fontStyle: _subtitleStyle[0].toLowerCase() == 'italic'
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ListTile(
+            title: const Text('Subtitle Style'),
+
+            trailing: DropdownButton<String>(
+              value: _subtitleStyle[0],
+              items: dropdownstyle,
+              onChanged: (value) {
+                HapticFeedback.mediumImpact();
+                if (value != null) {
+                  setState(() {
+                    // <--- Crucial setState here
+                    _subtitleStyle.remove(value);
+                    _subtitleStyle.insert(0, value);
+                  });
+                  _debouncedSave();
+                }
+              },
+            ),
+          ),
+          ListTile(
+            title: const Text('Subtitle Color'),
+            trailing: GestureDetector(
+              // Use GestureDetector to make the color display tappable
+              onTap: () => _showColorPickerDialog(context),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _selectedSubtitleColor,
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            title: const Text('Font Size'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Slider(
+                  value: _subtitleSize,
+                  min: 20.0,
+                  max: 60.0,
+                  divisions: 18,
+                  label: '${_subtitleSize.toStringAsFixed(2)}x',
+                  onChanged: (value) {
+                    HapticFeedback.mediumImpact();
+                    setState(() =>
+                        _subtitleSize = double.parse(value.toStringAsFixed(2)));
+                    _debouncedSave();
+                  },
+                ),
+                Text('Current: ${_subtitleSize.toStringAsFixed(2)}x'),
+              ],
+            ),
+          ),
+          ],
           const Divider(),
           if (!isWeb)
             SwitchListTile(
