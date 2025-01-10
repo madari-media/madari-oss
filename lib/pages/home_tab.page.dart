@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:madari_client/engine/library.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/trakt/containers/up_next.container.dart';
 import 'package:madari_client/features/trakt/service/trakt.service.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../features/connections/widget/base/render_library_list.dart';
 import '../features/getting_started/container/getting_started.dart';
@@ -93,6 +96,16 @@ class _HomeTabPageState extends State<HomeTabPage> {
     return traktService.getHomePageContent();
   }
 
+  reloadPage() async {
+    await refreshAuth();
+    await query.refetch();
+    setState(() {
+      traktLibraries = getTraktLibraries();
+    });
+    await _onRefresh();
+    return;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -106,17 +119,20 @@ class _HomeTabPageState extends State<HomeTabPage> {
                 "Madari",
                 style: GoogleFonts.montserrat(),
               ),
+              actions: [
+                if (isWeb || (!Platform.isIOS && !Platform.isAndroid))
+                  IconButton(
+                    onPressed: () {
+                      reloadPage();
+                    },
+                    icon: const Icon(
+                      Icons.refresh,
+                    ),
+                  ),
+              ],
             ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await refreshAuth();
-          await query.refetch();
-          setState(() {
-            traktLibraries = getTraktLibraries();
-          });
-          await _onRefresh();
-          return;
-        },
+        onRefresh: () async {},
         child: QueryBuilder(
           query: query,
           builder: (context, state) {

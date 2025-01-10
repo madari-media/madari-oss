@@ -167,7 +167,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'externalPlayer': _enableExternalPlayer,
           'externalPlayerId': extranalId,
           'disableSubtitle': _disabledSubtitle,
-          'subtitleStyle': _subtitleStyle,
+          'subtitleStyle': _selectedSubtitleStyle,
           'subtitleColor': colorToHex(_selectedSubtitleColor),
           'subtitleSize': _subtitleSize,
         },
@@ -327,8 +327,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
                   HapticFeedback.mediumImpact();
                   if (value != null) {
                     setState(() {
-                      _subtitleStyle.remove(value);
-                      _subtitleStyle.insert(0, value);
+                      _selectedSubtitleStyle = value;
                     });
                     _debouncedSave();
                   }

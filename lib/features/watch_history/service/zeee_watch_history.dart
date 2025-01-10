@@ -199,13 +199,11 @@ class ZeeeWatchHistory extends BaseWatchHistory {
 
     for (final record in unsynced) {
       try {
-        // Check server record before updating
         try {
           final serverRecord = await collection.getOne(record.id);
           final serverUpdatedAt =
               DateTime.parse(serverRecord.get<String>('updated'));
 
-          // Skip if server has newer data
           if (record.updatedAt.isBefore(serverUpdatedAt)) {
             await db.watchHistoryQueries.updateSyncStatus(
               record.id,
@@ -213,9 +211,7 @@ class ZeeeWatchHistory extends BaseWatchHistory {
             );
             continue;
           }
-        } catch (e) {
-          // Record doesn't exist on server, will create new
-        }
+        } catch (e) {}
 
         if (record.lastSyncedAt == null) {
           await collection.create(
