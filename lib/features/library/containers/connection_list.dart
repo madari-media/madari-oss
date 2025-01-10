@@ -113,39 +113,44 @@ class _ConnectionCardState extends State<ConnectionCard> {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             trailing: widget.canDisconnect
                 ? TextButton(
-                    onPressed: () => showDialog(
-                      builder: (ctx) {
-                        return AlertDialog(
-                          title: const Text("Confirmation"),
-                          content: SizedBox(
-                            width: MediaQuery.of(context).size.width,
-                            child: Text(
-                              "Are your sure you want to delete ${widget.connection.title}?",
-                            ),
-                          ),
-                          actions: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                              },
-                              child: const Text("CANCEL"),
-                            ),
-                            FilledButton(
-                              onPressed: () {
-                                _handleConnection(context, ref);
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text("DISCONNECT"),
-                            ),
-                          ],
-                        );
-                      },
-                      context: context,
-                    ),
-                    child: isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text("Disconnect"),
-                  )
+              onPressed: () async { // Make onPressed async
+                final result = await showDialog<bool>( // Await the dialog result
+                  context: context,
+                  builder: (ctx) {
+                    return AlertDialog(
+                      title: const Text("Confirmation"),
+                      content: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        child: Text(
+                          "Are you sure you want to delete ${widget.connection.title}?",
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop(false); // Return false on cancel
+                          },
+                          child: const Text("CANCEL"),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop(true); // Return true on disconnect
+                          },
+                          child: const Text("DISCONNECT"),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (result == true) { // Check if the user pressed disconnect
+                  _handleConnection(context, ref);
+                }
+              },
+              child: isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text("Disconnect"),
+            )
                 : null,
           ),
         );
