@@ -132,7 +132,9 @@ class _HomeTabPageState extends State<HomeTabPage> {
               ],
             ),
       body: RefreshIndicator(
-        onRefresh: () async {},
+        onRefresh: () async {
+          return reloadPage();
+        },
         child: QueryBuilder(
           query: query,
           builder: (context, state) {
