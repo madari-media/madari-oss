@@ -157,6 +157,7 @@ class TraktContainerState extends State<TraktContainer> {
 
   Future<void> refresh() async {
     _logger.info('Refreshing data');
+    _cachedItems = [];
     await _loadData();
   }
 
