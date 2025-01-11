@@ -808,7 +808,10 @@ class TraktService {
 
     try {
       if (meta.type == "series") {
-        final body = await _makeRequest("$_baseUrl/sync/playback/episodes");
+        final body = await _makeRequest(
+          "$_baseUrl/sync/playback/episodes",
+          bypassCache: true,
+        );
 
         final List<TraktProgress> result = [];
 
@@ -849,7 +852,10 @@ class TraktService {
 
         return result;
       } else {
-        final body = await _makeRequest("$_baseUrl/sync/playback/movies");
+        final body = await _makeRequest(
+          "$_baseUrl/sync/playback/movies",
+          bypassCache: true,
+        );
 
         for (final item in body) {
           if (item["type"] != "movie") {
