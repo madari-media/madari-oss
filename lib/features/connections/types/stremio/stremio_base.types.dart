@@ -489,7 +489,7 @@ class Meta extends LibraryItem {
 class BehaviorHints {
   @JsonKey(name: "defaultVideoId")
   final dynamic defaultVideoId;
-  @JsonKey(name: "hasScheduledVideos")
+  @JsonKey(name: "hasScheduledVideos", defaultValue: false)
   final bool hasScheduledVideos;
 
   BehaviorHints({

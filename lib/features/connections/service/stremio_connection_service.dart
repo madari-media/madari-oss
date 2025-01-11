@@ -175,9 +175,14 @@ class StremioConnectionService extends BaseConnectionService {
           cacheDuration: const Duration(hours: 8),
         ),
         queryFn: () async {
-          _logger.finer('Fetching catalog from URL: $url');
-          final httpBody = await http.get(Uri.parse(url));
-          return StrmioMeta.fromJson(jsonDecode(httpBody.body));
+          try {
+            _logger.finer('Fetching catalog from URL: $url');
+            final httpBody = await http.get(Uri.parse(url));
+            return StrmioMeta.fromJson(jsonDecode(httpBody.body));
+          } catch (e, stack) {
+            _logger.severe('Error parsing catalog', e, stack);
+            rethrow;
+          }
         },
         key: url,
       )
@@ -186,7 +191,7 @@ class StremioConnectionService extends BaseConnectionService {
           .first
           .then((docs) {
         if (docs.error != null) {
-          _logger.severe('Error fetching catalog: ${docs.error}');
+          _logger.severe('Error fetching catalog', docs.error);
           throw docs.error!;
         }
         return docs.data!;
