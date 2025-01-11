@@ -24,8 +24,6 @@ class TraktService {
 
   final refetchKey = BehaviorSubject<List<String>>();
 
-  static const Duration _cacheRevalidationInterval = Duration(hours: 1);
-
   static TraktService? _instance;
   static TraktService? get instance => _instance;
   static BaseConnectionService? stremioService;
@@ -42,8 +40,6 @@ class TraktService {
       ),
     );
   }
-
-  Timer? _cacheRevalidationTimer;
 
   clearCache() {
     _logger.info('Clearing cache');
@@ -132,25 +128,6 @@ class TraktService {
 
   void _startCacheRevalidation() {
     _logger.info('Starting cache revalidation timer');
-    _cacheRevalidationTimer = Timer.periodic(
-      _cacheRevalidationInterval,
-      (_) async {
-        await _revalidateCache();
-      },
-    );
-  }
-
-  Future<void> _revalidateCache() async {
-    _logger.info('Revalidating cache');
-    for (final key in _cache.keys) {
-      final cachedData = _cache[key];
-      if (cachedData != null) {
-        final updatedData = await _makeRequest(key, bypassCache: true);
-        _cache[key] = updatedData;
-      }
-    }
-
-    saveCacheToDisk();
   }
 
   Future<dynamic> _makeRequest(String url, {bool bypassCache = false}) async {

@@ -67,7 +67,11 @@ class _HomeTabPageState extends State<HomeTabPage> {
 
       if (state == null) continue;
 
-      promises.add(state.refresh());
+      promises.add(() async {
+        try {
+          state.refresh();
+        } catch (e) {}
+      }());
     }
 
     await Future.wait(promises);

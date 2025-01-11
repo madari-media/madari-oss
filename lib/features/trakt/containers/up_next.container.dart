@@ -156,9 +156,11 @@ class TraktContainerState extends State<TraktContainer> {
   }
 
   Future<void> refresh() async {
-    _logger.info('Refreshing data');
-    _cachedItems = [];
-    await _loadData();
+    try {
+      _logger.info('Refreshing data for ${widget.loadId}');
+      _cachedItems = [];
+      await _loadData();
+    } catch (e) {}
   }
 
   String get title {
@@ -234,7 +236,7 @@ class TraktContainerState extends State<TraktContainer> {
           ),
           Stack(
             children: [
-              if ((_cachedItems ?? []).isEmpty && !_isLoading)
+              if ((_cachedItems ?? []).isEmpty && !_isLoading && _error != null)
                 const Positioned.fill(
                   child: Center(
                     child: Text("Nothing to see here"),
@@ -242,18 +244,46 @@ class TraktContainerState extends State<TraktContainer> {
                 ),
               if (_isLoading && (_cachedItems ?? []).isEmpty)
                 const SpinnerCards(),
-              SizedBox(
-                height: getListHeight(context),
-                child: RenderListItems(
-                  isWide: widget.loadId == "up_next_series",
-                  items: _cachedItems ?? [],
-                  error: _error,
-                  itemScrollController: _scrollController,
-                  hasError: _error != null,
-                  heroPrefix: "trakt_up_next${widget.loadId}",
-                  service: TraktService.stremioService!,
+              if (_error != null) Text(_error!),
+              if (_error != null)
+                Positioned.fill(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Error: $_error",
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _error = null;
+                            });
+                            _loadData();
+                          },
+                          child: const Text("Retry"),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              if (_error == null)
+                SizedBox(
+                  height: getListHeight(context),
+                  child: RenderListItems(
+                    isWide: widget.loadId == "up_next_series",
+                    items: _cachedItems ?? [],
+                    error: _error,
+                    itemScrollController: _scrollController,
+                    hasError: _error != null,
+                    heroPrefix: "trakt_up_next${widget.loadId}",
+                    service: TraktService.stremioService!,
+                  ),
+                ),
             ],
           )
         ],
