@@ -70,8 +70,8 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     final traktService = TraktService.instance;
 
     try {
-      if (traktService!.isEnabled()) {
-        final result = await traktService.getProgress(widget.meta);
+      if (TraktService.isEnabled()) {
+        final result = await traktService!.getProgress(widget.meta);
 
         for (final item in result) {
           if (!_traktProgress.containsKey(item.season)) {

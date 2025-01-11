@@ -581,7 +581,7 @@ class TraktService {
     return config;
   }
 
-  bool isEnabled() {
+  static bool isEnabled() {
     return AppEngine.engine.pb.authStore.record!
             .getStringValue("trakt_token") !=
         "";

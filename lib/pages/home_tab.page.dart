@@ -35,7 +35,14 @@ class HomeTabPage extends StatefulWidget {
 class _HomeTabPageState extends State<HomeTabPage> {
   late final query = Query(
     queryFn: () async {
-      await TraktService.ensureInitialized();
+      try {
+        if (TraktService.isEnabled() == true) {
+          await TraktService.ensureInitialized();
+        }
+      } catch (e, stack) {
+        print(e);
+        print(stack);
+      }
 
       if (widget.defaultLibraries != null) {
         return Future.value(

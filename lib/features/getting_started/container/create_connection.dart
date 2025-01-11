@@ -291,6 +291,7 @@ class _CreateConnectionStepState extends State<CreateConnectionStep> {
   final Map<String, String> _items = {
     "Cinemeta": "https://v3-cinemeta.strem.io/manifest.json",
     "Watchhub": "https://watchhub.strem.io/manifest.json",
+    "Subtitles": "https://opensubtitles-v3.strem.io/manifest.json",
   };
 
   void _removeAddon(int index) {

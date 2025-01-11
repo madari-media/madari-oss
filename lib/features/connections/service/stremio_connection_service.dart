@@ -178,9 +178,11 @@ class StremioConnectionService extends BaseConnectionService {
           try {
             _logger.finer('Fetching catalog from URL: $url');
             final httpBody = await http.get(Uri.parse(url));
-            return StrmioMeta.fromJson(jsonDecode(httpBody.body));
+            return StrmioMeta.fromJson(
+              jsonDecode(httpBody.body),
+            );
           } catch (e, stack) {
-            _logger.severe('Error parsing catalog', e, stack);
+            _logger.severe('Error parsing catalog $url', e, stack);
             rethrow;
           }
         },

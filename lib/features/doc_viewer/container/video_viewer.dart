@@ -193,7 +193,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
     canCallOnce = true;
 
-    if (!TraktService.instance!.isEnabled() || traktProgress == null) {
+    if (!TraktService.isEnabled() || traktProgress == null) {
       player.play();
       return;
     }
