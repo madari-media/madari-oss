@@ -211,7 +211,7 @@ class TraktContainerState extends State<TraktContainer> {
                                 heroPrefix: "trakt_up_next${widget.loadId}",
                                 service: TraktService.stremioService!,
                                 isGrid: true,
-                                isWide: false,
+                                isWide: widget.loadId == "up_next_series",
                               ),
                             ),
                           );

@@ -400,6 +400,7 @@ class TraktService {
                 return Meta(
                   type: "series",
                   id: imdb,
+                  externalIds: show['show']['ids'],
                 );
               } catch (e) {
                 _logger.warning('Error mapping show: $e');

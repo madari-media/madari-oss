@@ -238,6 +238,8 @@ class StremioConnectionService extends BaseConnectionService {
               nextSeason: res.nextSeason,
               nextEpisode: res.nextEpisode,
               nextEpisodeTitle: res.nextEpisodeTitle,
+              externalIds: res.externalIds,
+              episodeExternalIds: res.episodeExternalIds,
             );
           }).catchError((err, stack) {
             _logger.severe('Error fetching item: ${res.id}', err, stack);

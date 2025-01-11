@@ -340,7 +340,7 @@ class _StremioCardState extends State<StremioCard> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      meta.imdbRating!,
+                                      meta.imdbRating,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
@@ -407,7 +407,7 @@ class _StremioCardState extends State<StremioCard> {
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              "S${meta.nextSeason} E${meta.nextEpisode}",
+                              "S${meta.currentVideo?.season ?? meta.nextSeason} E${meta.currentVideo?.episode ?? meta.nextEpisode}",
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
