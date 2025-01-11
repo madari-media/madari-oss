@@ -78,13 +78,10 @@ class _StremioItemPageState extends State<StremioItemPage> {
       );
 
       if (mounted) {
-        final season = widget.meta?.nextSeason == null
-            ? ""
-            : "S${widget.meta?.nextSeason}";
-
-        final episode = widget.meta?.nextEpisode == null
-            ? ""
-            : "E${widget.meta?.nextEpisode}";
+        final videoEpisode =
+            widget.meta?.currentVideo?.episode ?? widget.meta?.nextEpisode;
+        final videoSeason =
+            widget.meta?.currentVideo?.season ?? widget.meta?.nextSeason;
 
         showModalBottomSheet(
           context: context,
@@ -98,7 +95,8 @@ class _StremioItemPageState extends State<StremioItemPage> {
                   icon: const Icon(Icons.close),
                 ),
                 title: Text(
-                  "Streams  $season $episode".trim(),
+                  "Streams  ${videoSeason != null ? "S$videoSeason" : ""} ${videoEpisode != null ? " E$videoEpisode" : ""}"
+                      .trim(),
                 ),
               ),
               body: SafeArea(
@@ -110,12 +108,8 @@ class _StremioItemPageState extends State<StremioItemPage> {
                         : null,
                     service: widget.service!,
                     id: widget.meta as LibraryItem,
-                    season: (widget.meta?.currentVideo?.season ??
-                            widget.meta?.nextSeason)
-                        ?.toString(),
-                    episode: (widget.meta?.currentVideo?.episode ??
-                            widget.meta?.nextEpisode)
-                        ?.toString(),
+                    season: videoSeason?.toString(),
+                    episode: videoEpisode?.toString(),
                     shouldPop: false,
                   ),
                 ),

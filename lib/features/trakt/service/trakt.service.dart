@@ -761,10 +761,16 @@ class TraktService {
       _cache.remove('$_baseUrl/sync/watched/shows');
       _cache.remove('$_baseUrl/sync/playback');
 
-      refetchKey.add([
+      final keys = [
         "continue_watching",
         if (meta.type == "series") "up_next_series",
-      ]);
+      ];
+
+      refetchKey.add(keys);
+
+      _logger.info(
+        "pushing refetch key ${keys.join(", ")} still in cache ${_cache.keys.join(", ")}",
+      );
     } catch (e, stack) {
       _logger.severe('Error stopping scrobbling: $e', stack);
       rethrow;

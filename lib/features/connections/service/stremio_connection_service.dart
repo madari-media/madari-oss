@@ -502,9 +502,7 @@ class StremioConnectionService extends BaseConnectionService {
 
     try {
       streamTitle = utf8.decode(streamTitle.runes.toList());
-    } catch (e) {
-      _logger.warning('Failed to decode stream title', e);
-    }
+    } catch (e) {}
 
     String? streamDescription = item.description;
 
@@ -512,9 +510,7 @@ class StremioConnectionService extends BaseConnectionService {
       streamDescription = item.description != null
           ? utf8.decode((item.description!).runes.toList())
           : null;
-    } catch (e) {
-      _logger.warning('Failed to decode stream description', e);
-    }
+    } catch (e) {}
 
     String title = meta.name ?? item.title ?? "No title";
 

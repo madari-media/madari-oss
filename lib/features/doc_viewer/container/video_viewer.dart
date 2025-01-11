@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/doc_viewer/container/video_viewer/tv_controls.dart';
 import 'package:madari_client/features/watch_history/service/base_watch_history.dart';
@@ -52,6 +53,7 @@ class _VideoViewerState extends State<VideoViewer> {
     ),
   );
   late final GlobalKey<VideoState> key = GlobalKey<VideoState>();
+  final Logger _logger = Logger('VideoPlayer');
 
   double get currentProgressInPercentage {
     final duration = player.state.duration.inSeconds;
@@ -61,10 +63,11 @@ class _VideoViewerState extends State<VideoViewer> {
 
   Future<List<TraktProgress>>? traktProgress;
 
-  saveWatchHistory() {
+  Future<void> saveWatchHistory() async {
     final duration = player.state.duration.inSeconds;
 
     if (duration < 30) {
+      _logger.info('Video is too short to track.');
       return;
     }
 
@@ -72,29 +75,34 @@ class _VideoViewerState extends State<VideoViewer> {
     final progress = duration > 0 ? (position / duration * 100).round() : 0;
 
     if (progress == 0) {
+      _logger.info('No progress to save.');
       return;
     }
 
-    if (widget.meta is types.Meta) {
+    if (widget.meta is types.Meta && TraktService.instance != null) {
       try {
         if (player.state.playing) {
-          TraktService.instance!.startScrobbling(
+          _logger.info('Starting scrobbling...');
+          await TraktService.instance!.startScrobbling(
             meta: widget.meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         } else {
-          TraktService.instance!.stopScrobbling(
+          _logger.info('Stopping scrobbling...');
+          await TraktService.instance!.stopScrobbling(
             meta: widget.meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         }
       } catch (e) {
-        print(e);
+        _logger.severe('Error during scrobbling: $e');
         TraktService.instance!.debugLogs.add(e.toString());
       }
+    } else {
+      _logger.warning('Meta is not valid or TraktService is not initialized.');
     }
 
-    zeeeWatchHistory!.saveWatchHistory(
+    await zeeeWatchHistory!.saveWatchHistory(
       history: WatchHistory(
         id: _source.id,
         progress: progress,
@@ -172,7 +180,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
   bool canCallOnce = false;
 
-  setDurationFromTrakt() async {
+  Future<void> setDurationFromTrakt() async {
     if (player.state.duration.inSeconds < 2) {
       return;
     }
@@ -202,8 +210,8 @@ class _VideoViewerState extends State<VideoViewer> {
       ),
     );
 
-    player.seek(duration);
-    player.play();
+    await player.seek(duration);
+    await player.play();
   }
 
   List<StreamSubscription> listener = [];
@@ -230,9 +238,10 @@ class _VideoViewerState extends State<VideoViewer> {
       }
     }
 
-    _duration = player.stream.duration.listen((item) {
+    _duration = player.stream.duration.listen((item) async {
       if (item.inSeconds != 0) {
-        setDurationFromTrakt();
+        await setDurationFromTrakt();
+        await saveWatchHistory();
       }
     });
 
@@ -283,6 +292,8 @@ class _VideoViewerState extends State<VideoViewer> {
   }
 
   loadFile() async {
+    _logger.info('Loading file for source: ${_source.id}');
+
     final item = await zeeeWatchHistory!.getItemWatchHistory(
       ids: [
         WatchHistoryGetRequest(
@@ -335,6 +346,8 @@ class _VideoViewerState extends State<VideoViewer> {
   late StreamSubscription<dynamic> _duration;
 
   onLibrarySelect() async {
+    _logger.info('Library selection triggered.');
+
     controller.player.pause();
 
     final result = await showCupertinoDialog(
@@ -367,6 +380,8 @@ class _VideoViewerState extends State<VideoViewer> {
 
   @override
   void dispose() {
+    _logger.info('Disposing VideoViewer...');
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -441,8 +456,8 @@ class _VideoViewerState extends State<VideoViewer> {
       switch (styleName.toLowerCase()) {
         case 'italic':
           return FontStyle.italic;
-        case 'normal': // Explicitly handle 'normal' (good practice)
-        default: // Default case for any other string or null
+        case 'normal':
+        default:
           return FontStyle.normal;
       }
     }
@@ -521,6 +536,8 @@ class _VideoViewerState extends State<VideoViewer> {
   }
 
   onSubtitleSelect() {
+    _logger.info('Subtitle selection triggered.');
+
     showCupertinoModalPopup(
       context: context,
       builder: (ctx) => Card(
@@ -573,6 +590,8 @@ class _VideoViewerState extends State<VideoViewer> {
   }
 
   onAudioSelect() {
+    _logger.info('Audio track selection triggered.');
+
     showCupertinoModalPopup(
       context: context,
       builder: (ctx) => Card(

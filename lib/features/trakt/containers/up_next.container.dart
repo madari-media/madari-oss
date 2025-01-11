@@ -32,6 +32,8 @@ class TraktContainerState extends State<TraktContainer> {
 
   final _scrollController = ScrollController();
 
+  StreamSubscription<List<String>>? _steam;
+
   bool get _isBottom {
     if (!_scrollController.hasClients) return false;
     final maxScroll = _scrollController.position.maxScrollExtent;
@@ -45,6 +47,14 @@ class TraktContainerState extends State<TraktContainer> {
     _logger.info('Initializing TraktContainerState');
     _loadData();
 
+    _steam = TraktService.instance?.refetchKey.stream.listen((item) {
+      if (item.contains(widget.loadId)) {
+        _logger.info("refreshing widget ${widget.loadId}");
+        _cachedItems = [];
+        _loadData();
+      }
+    });
+
     _scrollController.addListener(() {
       if (_isBottom) {
         _loadData(isLoadMore: true);
@@ -56,6 +66,7 @@ class TraktContainerState extends State<TraktContainer> {
   void dispose() {
     _logger.info('Disposing TraktContainerState');
     _scrollController.dispose();
+    _steam?.cancel();
     super.dispose();
   }
 
