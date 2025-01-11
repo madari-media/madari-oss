@@ -138,7 +138,11 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           ),
           body: RenderStreamList(
             service: widget.service!,
-            id: meta,
+            id: meta.copyWith(
+              episodeExternalIds: {
+                "tvdb": episode.tvdbId,
+              },
+            ),
             season: currentSeason.toString(),
             episode: episode.number?.toString(),
             shouldPop: widget.shouldPop,

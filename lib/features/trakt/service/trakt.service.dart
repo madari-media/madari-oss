@@ -22,10 +22,6 @@ class TraktService {
   static const String _baseUrl = 'https://api.trakt.tv';
   static const String _apiVersion = '2';
 
-  static const int _authedPostLimit = 100;
-  static const int _authedGetLimit = 1000;
-  static const Duration _rateLimitWindow = Duration(minutes: 5);
-
   final refetchKey = BehaviorSubject<List<String>>();
 
   static const Duration _cacheRevalidationInterval = Duration(hours: 1);
@@ -33,10 +29,6 @@ class TraktService {
   static TraktService? _instance;
   static TraktService? get instance => _instance;
   static BaseConnectionService? stremioService;
-
-  int _postRequestCount = 0;
-  int _getRequestCount = 0;
-  DateTime _lastRateLimitReset = DateTime.now();
 
   Map<String, dynamic> _cache = {};
 
@@ -82,7 +74,6 @@ class TraktService {
 
     _instance?._cache = result?.data ?? {};
 
-    // Start cache revalidation timer
     _instance!._startCacheRevalidation();
   }
 
@@ -103,7 +94,8 @@ class TraktService {
     final connection = ConnectionResponse(
       connection: Connection.fromRecord(model_),
       connectionTypeRecord: ConnectionTypeRecord.fromRecord(
-          model_.get<RecordModel>("expand.type")),
+        model_.get<RecordModel>("expand.type"),
+      ),
     );
 
     stremioService = BaseConnectionService.connectionById(connection);
@@ -192,18 +184,40 @@ class TraktService {
           'year': meta.year,
           'ids': {
             'imdb': meta.imdbId ?? meta.id,
-            ...(meta.episodeExternalIds ?? {}),
+            if (meta.tvdbId != null) 'tvdb': meta.tvdbId,
           },
         },
       };
     } else {
+      final Map<String, dynamic> episodeExternalIds =
+          meta.episodeExternalIds ?? {};
+
+      final isEmpty = episodeExternalIds.keys.isEmpty;
+
+      if (!isEmpty) {
+        return {
+          "episode": {
+            "ids": meta.episodeExternalIds,
+          },
+        };
+      }
+
+      if (meta.currentVideo?.id != null) {
+        return {
+          "episode": {
+            "ids": {
+              "imdb": meta.currentVideo?.id,
+            },
+          },
+        };
+      }
+
       return {
         "show": {
           "title": meta.name,
           "year": meta.year,
           "ids": {
             "imdb": meta.imdbId ?? meta.id,
-            ...(meta.episodeExternalIds ?? {}),
           }
         },
         "episode": {
@@ -629,8 +643,6 @@ class TraktService {
     try {
       _logger.info('Starting scrobbling for ${meta.type} with ID: ${meta.id}');
 
-      print(_buildObjectForMeta(meta));
-
       final response = await http.post(
         Uri.parse('$_baseUrl/scrobble/start'),
         headers: headers,
@@ -639,6 +651,12 @@ class TraktService {
           ..._buildObjectForMeta(meta),
         }),
       );
+
+      if (response.statusCode == 404) {
+        _logger.severe('Failed to start scrobbling: ${response.statusCode}');
+        _logger.severe("${_buildObjectForMeta(meta)}");
+        return;
+      }
 
       if (response.statusCode != 201) {
         _logger.severe('Failed to start scrobbling: ${response.statusCode}');
@@ -662,8 +680,6 @@ class TraktService {
       _logger.info('Trakt integration is not enabled');
       return;
     }
-
-    print(_buildObjectForMeta(meta));
 
     final cacheKey = '${meta.id}_pauseScrobbling';
 
@@ -703,7 +719,9 @@ class TraktService {
           body: json.encode(body),
         );
 
-        if (response.statusCode == 201) {
+        if (response.statusCode == 404) {
+          _logger.warning('could not find episode');
+        } else if (response.statusCode == 201) {
           _logger.info('POST request successful');
           return;
         } else if (response.statusCode == 429) {
@@ -735,6 +753,7 @@ class TraktService {
   Future<void> stopScrobbling({
     required Meta meta,
     required double progress,
+    bool shouldClearCache = false,
   }) async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
@@ -758,19 +777,20 @@ class TraktService {
         },
       );
 
-      _cache.remove('$_baseUrl/sync/watched/shows');
-      _cache.remove('$_baseUrl/sync/playback');
+      if (shouldClearCache) {
+        _cache.remove('$_baseUrl/sync/watched/shows');
+        _cache.remove('$_baseUrl/sync/playback');
 
-      final keys = [
-        "continue_watching",
-        if (meta.type == "series") "up_next_series",
-      ];
+        final keys = [
+          "continue_watching",
+          if (meta.type == "series") "up_next_series",
+        ];
+        refetchKey.add(keys);
 
-      refetchKey.add(keys);
-
-      _logger.info(
-        "pushing refetch key ${keys.join(", ")} still in cache ${_cache.keys.join(", ")}",
-      );
+        _logger.info(
+          "pushing refetch key ${keys.join(", ")} still in cache ${_cache.keys.join(", ")}",
+        );
+      }
     } catch (e, stack) {
       _logger.severe('Error stopping scrobbling: $e', stack);
       rethrow;

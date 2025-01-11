@@ -405,6 +405,7 @@ class _VideoViewerState extends State<VideoViewer> {
       TraktService.instance!.stopScrobbling(
         meta: widget.meta as types.Meta,
         progress: currentProgressInPercentage,
+        shouldClearCache: true,
       );
     }
 

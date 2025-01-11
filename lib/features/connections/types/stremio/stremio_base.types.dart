@@ -338,9 +338,6 @@ class Meta extends LibraryItem {
           return episode.tvdbId == episodeExternalIds['tvdb'];
         }
 
-        print(episode.tvdbId);
-        print(episodeExternalIds?['tvdb']);
-
         return nextEpisode == episode.episode && nextSeason == episode.season;
       },
     );
