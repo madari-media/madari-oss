@@ -66,7 +66,7 @@ class _VideoViewerState extends State<VideoViewer> {
   Future<void> saveWatchHistory() async {
     final duration = player.state.duration.inSeconds;
 
-    if (duration < 30) {
+    if (duration <= 30) {
       _logger.info('Video is too short to track.');
       return;
     }
