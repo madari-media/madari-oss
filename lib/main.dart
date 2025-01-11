@@ -17,6 +17,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as path;
 import 'package:window_manager/window_manager.dart';
 
+import 'data/global_logs.dart';
 import 'features/doc_viewer/container/iframe.dart';
 import 'features/downloads/service/service.dart';
 import 'features/watch_history/service/zeee_watch_history.dart';
@@ -29,15 +30,34 @@ void main() async {
     print("Unable");
   }
 
-  Logger.root.level = Level.ALL;
+  Logger.root.level = Level.INFO;
 
   Logger.root.onRecord.listen((record) {
-    print('${record.level.name}: ${record.time}: ${record.message}');
+    final logs =
+        '${record.level.name.padRight(10)}${record.loggerName.padRight(30)}${record.time.hour}:${record.time.minute}:${record.time.second}:${record.time.millisecond}: ${record.message}';
+
+    print(logs);
+
+    globalLogs.add(logs);
+    if (globalLogs.length > 1000) {
+      globalLogs.removeAt(0);
+    }
+
     if (record.error != null) {
-      print('Error: ${record.error}');
+      final error = 'Error: ${record.time} ${record.error}';
+      print(error);
+      globalLogs.add(error);
+      if (globalLogs.length > 1000) {
+        globalLogs.removeAt(0);
+      }
     }
     if (record.stackTrace != null) {
-      print('StackTrace: ${record.stackTrace}');
+      final error = 'StackTrace: ${record.stackTrace}';
+      print(error);
+      globalLogs.add(error);
+      if (globalLogs.length > 1000) {
+        globalLogs.removeAt(0);
+      }
     }
   });
 
@@ -113,7 +133,6 @@ class _MadariAppState extends State<MadariApp> {
   void _initializeFileHandling() {
     platform.setMethodCallHandler((call) async {
       if (call.method == "openFile") {
-        // Handle the new file data structure
         _openedFileData = call.arguments as Map<String, dynamic>?;
 
         if (_openedFileData != null) {

@@ -16,6 +16,7 @@ import '../../../utils/load_language.dart';
 import '../../connections/types/stremio/stremio_base.types.dart' as types;
 import '../../connections/widget/stremio/stremio_season_selector.dart';
 import '../../trakt/service/trakt.service.dart';
+import '../../trakt/types/common.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
 import 'video_viewer/desktop_video_player.dart';
@@ -423,13 +424,19 @@ class _VideoViewerState extends State<VideoViewer> {
         });
       },
     );
-       String subtitleStyleName = config.subtitleStyle ?? 'Normal';
-   String  subtitleStyleColor = config.subtitleColor ?? 'white';
-    double subtitleSize = config.subtitleSize ;
+    String subtitleStyleName = config.subtitleStyle ?? 'Normal';
+    String subtitleStyleColor = config.subtitleColor ?? 'white';
+    double subtitleSize = config.subtitleSize;
+
     Color hexToColor(String hexColor) {
       final hexCode = hexColor.replaceAll('#', '');
-      return Color(int.parse('0x$hexCode'));
+      try {
+        return Color(int.parse('0x$hexCode'));
+      } catch (e) {
+        return Colors.white;
+      }
     }
+
     FontStyle getFontStyleFromString(String styleName) {
       switch (styleName.toLowerCase()) {
         case 'italic':
@@ -439,17 +446,19 @@ class _VideoViewerState extends State<VideoViewer> {
           return FontStyle.normal;
       }
     }
+
     FontStyle currentFontStyle = getFontStyleFromString(subtitleStyleName);
     return MaterialVideoControlsTheme(
       fullscreen: mobile,
       normal: mobile,
       child: Video(
         subtitleViewConfiguration: SubtitleViewConfiguration(
-              style: TextStyle(color: hexToColor(subtitleStyleColor),
+          style: TextStyle(
+              color: hexToColor(subtitleStyleColor),
               fontSize: subtitleSize,
-                  fontStyle: currentFontStyle,
+              fontStyle: currentFontStyle,
               fontWeight: FontWeight.bold),
-          ),
+        ),
         fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
         pauseUponEnteringBackgroundMode: true,
         key: key,

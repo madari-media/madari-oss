@@ -289,21 +289,17 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
               .whereType<LibraryItem>()
               .toList();
 
-          if (data.status == QueryStatus.loading && items.isEmpty) {
-            return const CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SpinnerCards(),
-                )
-              ],
-            );
-          }
-
           return RenderListItems(
             hasError: data.status == QueryStatus.error,
             onRefresh: () {
               query.refetch();
             },
+            loadMore: () {
+              query.getNextPage();
+            },
+            itemScrollController: _scrollController,
+            isLoadingMore: data.status == QueryStatus.loading ||
+                data.status == QueryStatus.loading && items.isEmpty,
             isGrid: widget.isGrid,
             items: items,
             heroPrefix: widget.item.id,
@@ -326,6 +322,8 @@ class RenderListItems extends StatelessWidget {
   final String heroPrefix;
   final dynamic error;
   final bool isWide;
+  final bool isLoadingMore;
+  final VoidCallback? loadMore;
 
   const RenderListItems({
     super.key,
@@ -339,6 +337,8 @@ class RenderListItems extends StatelessWidget {
     this.itemScrollController,
     this.error,
     this.isWide = false,
+    this.isLoadingMore = false,
+    this.loadMore,
   });
 
   @override
@@ -351,7 +351,9 @@ class RenderListItems extends StatelessWidget {
 
     return CustomScrollView(
       controller: controller,
-      physics: isGrid ? null : const NeverScrollableScrollPhysics(),
+      physics: isGrid
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       slivers: [
         if (hasError)
           SliverToBoxAdapter(
@@ -389,7 +391,7 @@ class RenderListItems extends StatelessWidget {
               ),
             ),
           ),
-        if (isGrid)
+        if (isGrid) ...[
           SliverGrid.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: getGridResponsiveColumnCount(context),
@@ -407,30 +409,67 @@ class RenderListItems extends StatelessWidget {
               );
             },
           ),
-        if (!isGrid)
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: listHeight,
-              child: ListView.builder(
-                itemBuilder: (ctx, index) {
-                  final item = items[index];
-
-                  return SizedBox(
-                    width: itemWidth,
-                    child: Container(
-                      decoration: const BoxDecoration(),
-                      child: service.renderCard(
-                        item,
-                        "${index}_${heroPrefix}",
+          if (isLoadingMore)
+            SliverPadding(
+              padding: const EdgeInsets.only(
+                top: 8.0,
+                right: 8.0,
+              ),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: getGridResponsiveColumnCount(context),
+                  mainAxisSpacing: getGridResponsiveSpacing(context),
+                  crossAxisSpacing: getGridResponsiveSpacing(context),
+                  childAspectRatio: 2 / 3,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Shimmer.fromColors(
+                        baseColor: Colors.grey[800]!,
+                        highlightColor: Colors.grey[700]!,
+                        child: Container(
+                          color: Colors.grey[800],
+                        ),
                       ),
-                    ),
-                  );
-                },
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
+                    );
+                  },
+                  childCount: 4, // Fixed number of loading items
+                ),
               ),
             ),
-          ),
+        ] else ...[
+          if (isLoadingMore)
+            const SliverToBoxAdapter(
+              child: SpinnerCards(),
+            ),
+          if (!isLoadingMore)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: listHeight,
+                child: ListView.builder(
+                  controller: itemScrollController,
+                  itemBuilder: (ctx, index) {
+                    final item = items[index];
+
+                    return SizedBox(
+                      width: itemWidth,
+                      child: Container(
+                        decoration: const BoxDecoration(),
+                        child: service.renderCard(
+                          item,
+                          "${index}_${heroPrefix}",
+                        ),
+                      ),
+                    );
+                  },
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                ),
+              ),
+            ),
+        ],
         SliverPadding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).padding.bottom,

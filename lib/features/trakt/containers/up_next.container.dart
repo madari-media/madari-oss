@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/trakt/service/trakt.service.dart';
 
 import '../../connections/widget/base/render_library_list.dart';
 import '../../settings/screen/trakt_integration_screen.dart';
-import '../service/trakt_cache.service.dart';
 
 class TraktContainer extends StatefulWidget {
   final String loadId;
@@ -20,48 +20,121 @@ class TraktContainer extends StatefulWidget {
 }
 
 class TraktContainerState extends State<TraktContainer> {
-  late final TraktCacheService _cacheService;
+  final Logger _logger = Logger('TraktContainerState');
+
   List<LibraryItem>? _cachedItems;
   bool _isLoading = false;
   String? _error;
 
-  late Timer _timer;
+  int _currentPage = 1;
+
+  static const _itemsPerPage = 5;
+
+  final _scrollController = ScrollController();
+
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    return currentScroll >= (maxScroll * 0.9);
+  }
 
   @override
   void initState() {
     super.initState();
-    _cacheService = TraktCacheService();
+    _logger.info('Initializing TraktContainerState');
     _loadData();
 
-    _timer = Timer.periodic(
-      const Duration(seconds: 30),
-      (timer) {
-        _loadData();
-      },
-    );
+    _scrollController.addListener(() {
+      if (_isBottom) {
+        _loadData(isLoadMore: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _logger.info('Disposing TraktContainerState');
+    _scrollController.dispose();
     super.dispose();
-    _timer.cancel();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({
+    bool isLoadMore = false,
+  }) async {
+    _logger.info('Started loading data for the _loadData');
+    if (_isLoading) {
+      _logger.warning('Load data called while already loading');
+      return;
+    }
+    _isLoading = true;
+
     setState(() {
-      _isLoading = true;
       _error = null;
     });
 
     try {
-      final items = await _cacheService.fetchData(widget.loadId);
+      final page = isLoadMore ? _currentPage + 1 : _currentPage;
+
+      List<LibraryItem>? newItems;
+
+      _logger.info('Loading data for loadId: ${widget.loadId}, page: $page');
+
+      switch (widget.loadId) {
+        case "up_next_series":
+          newItems = await TraktService.instance!
+              .getUpNextSeries(
+                page: page,
+                itemsPerPage: _itemsPerPage,
+              )
+              .first;
+          break;
+        case "continue_watching":
+          newItems = await TraktService.instance!.getContinueWatching(
+            page: page,
+            itemsPerPage: _itemsPerPage,
+          );
+          break;
+        case "upcoming_schedule":
+          newItems = await TraktService.instance!.getUpcomingSchedule(
+            page: page,
+            itemsPerPage: _itemsPerPage,
+          );
+          break;
+        case "watchlist":
+          newItems = await TraktService.instance!.getWatchlist(
+            page: page,
+            itemsPerPage: _itemsPerPage,
+          );
+          break;
+        case "show_recommendations":
+          newItems = await TraktService.instance!.getShowRecommendations(
+            page: page,
+            itemsPerPage: _itemsPerPage,
+          );
+          break;
+        case "movie_recommendations":
+          newItems = await TraktService.instance!.getMovieRecommendations(
+            page: page,
+            itemsPerPage: _itemsPerPage,
+          );
+          break;
+        default:
+          _logger.severe('Invalid loadId: ${widget.loadId}');
+          throw Exception("Invalid loadId: ${widget.loadId}");
+      }
+
       if (mounted) {
         setState(() {
-          _cachedItems = items;
+          _currentPage = page;
+          _cachedItems = [...?_cachedItems, ...?newItems];
           _isLoading = false;
         });
+
+        _logger.info('Data loaded successfully for loadId: ${widget.loadId}');
       }
     } catch (e) {
+      _logger.severe('Error loading data: $e');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -72,7 +145,7 @@ class TraktContainerState extends State<TraktContainer> {
   }
 
   Future<void> refresh() async {
-    await _cacheService.refresh(widget.loadId);
+    _logger.info('Refreshing data');
     await _loadData();
   }
 
@@ -103,6 +176,7 @@ class TraktContainerState extends State<TraktContainer> {
                 height: 30,
                 child: TextButton(
                   onPressed: () {
+                    _logger.info('Navigating to Trakt details page');
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) {
@@ -113,8 +187,14 @@ class TraktContainerState extends State<TraktContainer> {
                             body: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: RenderListItems(
+                                loadMore: () {
+                                  _loadData(
+                                    isLoadMore: true,
+                                  );
+                                },
                                 items: _cachedItems ?? [],
                                 error: _error,
+                                isLoadingMore: _isLoading,
                                 hasError: _error != null,
                                 heroPrefix: "trakt_up_next${widget.loadId}",
                                 service: TraktService.stremioService!,
@@ -148,20 +228,19 @@ class TraktContainerState extends State<TraktContainer> {
                     child: Text("Nothing to see here"),
                   ),
                 ),
+              if (_isLoading && (_cachedItems ?? []).isEmpty)
+                const SpinnerCards(),
               SizedBox(
                 height: getListHeight(context),
-                child: _isLoading
-                    ? SpinnerCards(
-                        isWide: widget.loadId == "up_next_series",
-                      )
-                    : RenderListItems(
-                        isWide: widget.loadId == "up_next_series",
-                        items: _cachedItems ?? [],
-                        error: _error,
-                        hasError: _error != null,
-                        heroPrefix: "trakt_up_next${widget.loadId}",
-                        service: TraktService.stremioService!,
-                      ),
+                child: RenderListItems(
+                  isWide: widget.loadId == "up_next_series",
+                  items: _cachedItems ?? [],
+                  error: _error,
+                  itemScrollController: _scrollController,
+                  hasError: _error != null,
+                  heroPrefix: "trakt_up_next${widget.loadId}",
+                  service: TraktService.stremioService!,
+                ),
               ),
             ],
           )

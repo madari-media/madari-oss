@@ -2,18 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_query/cached_query.dart';
-import 'package:cached_storage/cached_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../../engine/connection_type.dart';
 import '../../../engine/engine.dart';
 import '../../connections/service/base_connection_service.dart';
 import '../../connections/types/stremio/stremio_base.types.dart';
 import '../../settings/types/connection.dart';
+import '../types/common.dart';
 
 class TraktService {
   static final Logger _logger = Logger('TraktService');
@@ -25,9 +26,9 @@ class TraktService {
   static const int _authedGetLimit = 1000;
   static const Duration _rateLimitWindow = Duration(minutes: 5);
 
-  static const Duration _cacheRevalidationInterval = Duration(
-    hours: 1,
-  );
+  final refetchKey = BehaviorSubject<List<String>>();
+
+  static const Duration _cacheRevalidationInterval = Duration(hours: 1);
 
   static TraktService? _instance;
   static TraktService? get instance => _instance;
@@ -65,9 +66,8 @@ class TraktService {
 
     _logger.info('Initializing TraktService');
 
-    final result = await CachedQuery.instance.storage?.get(
-      "trakt_integration_cache",
-    );
+    final result =
+        await CachedQuery.instance.storage?.get("trakt_integration_cache");
 
     AppEngine.engine.pb.authStore.onChange.listen((item) {
       if (!AppEngine.engine.pb.authStore.isValid) {
@@ -103,8 +103,7 @@ class TraktService {
     final connection = ConnectionResponse(
       connection: Connection.fromRecord(model_),
       connectionTypeRecord: ConnectionTypeRecord.fromRecord(
-        model_.get<RecordModel>("expand.type"),
-      ),
+          model_.get<RecordModel>("expand.type")),
     );
 
     stremioService = BaseConnectionService.connectionById(connection);
@@ -139,29 +138,6 @@ class TraktService {
         'Authorization': 'Bearer $_token',
       };
 
-  Future<void> _checkRateLimit(String method) async {
-    final now = DateTime.now();
-    if (now.difference(_lastRateLimitReset) > _rateLimitWindow) {
-      _postRequestCount = 0;
-      _getRequestCount = 0;
-      _lastRateLimitReset = now;
-    }
-
-    if (method == 'GET') {
-      if (_getRequestCount >= _authedGetLimit) {
-        _logger.severe('GET rate limit exceeded');
-        throw Exception('GET rate limit exceeded');
-      }
-      _getRequestCount++;
-    } else if (method == 'POST' || method == 'PUT' || method == 'DELETE') {
-      if (_postRequestCount >= _authedPostLimit) {
-        _logger.severe('POST/PUT/DELETE rate limit exceeded');
-        throw Exception('POST/PUT/DELETE rate limit exceeded');
-      }
-      _postRequestCount++;
-    }
-  }
-
   void _startCacheRevalidation() {
     _logger.info('Starting cache revalidation timer');
     _cacheRevalidationTimer = Timer.periodic(
@@ -191,8 +167,6 @@ class TraktService {
       return _cache[url];
     }
 
-    await _checkRateLimit('GET');
-
     _logger.info('Making GET request to $url');
     final response = await http.get(Uri.parse(url), headers: headers);
 
@@ -218,7 +192,7 @@ class TraktService {
           'year': meta.year,
           'ids': {
             'imdb': meta.imdbId ?? meta.id,
-            ...(meta.externalIds ?? {}),
+            ...(meta.episodeExternalIds ?? {}),
           },
         },
       };
@@ -229,30 +203,31 @@ class TraktService {
           "year": meta.year,
           "ids": {
             "imdb": meta.imdbId ?? meta.id,
-            ...(meta.externalIds ?? {}),
+            ...(meta.episodeExternalIds ?? {}),
           }
         },
         "episode": {
-          "season": meta.nextSeason,
-          "number": meta.nextEpisode,
+          "season": meta.currentVideo?.season ?? meta.nextSeason,
+          "number": meta.currentVideo?.number ?? meta.nextEpisode,
         },
       };
     }
   }
 
-  Future<List<LibraryItem>> getUpNextSeries() async {
+  Stream<List<LibraryItem>> getUpNextSeries(
+      {int page = 1, int itemsPerPage = 5}) async* {
     await initStremioService();
 
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
-      return [];
+      yield [];
+      return;
     }
 
     try {
       _logger.info('Fetching up next series');
-      final List<dynamic> watchedShows = await _makeRequest(
-        '$_baseUrl/sync/watched/shows',
-      );
+      final List<dynamic> watchedShows =
+          await _makeRequest('$_baseUrl/sync/watched/shows');
 
       final progressFutures = watchedShows.map((show) async {
         final showId = show['show']['ids']['trakt'];
@@ -271,6 +246,7 @@ class TraktService {
                 type: "series",
                 id: imdb,
                 externalIds: show['show']['ids'],
+                episodeExternalIds: nextEpisode['ids'],
               ),
             );
 
@@ -280,6 +256,8 @@ class TraktService {
               nextEpisode: nextEpisode['number'],
               nextSeason: nextEpisode['season'],
               nextEpisodeTitle: nextEpisode['title'],
+              externalIds: show['show']['ids'],
+              episodeExternalIds: nextEpisode['ids'],
             );
           }
         } catch (e) {
@@ -291,15 +269,31 @@ class TraktService {
       }).toList();
 
       final results = await Future.wait(progressFutures);
+      final validResults = results.whereType<Meta>().toList();
 
-      return results.whereType<Meta>().toList();
+      // Pagination logic
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      if (startIndex >= validResults.length) {
+        yield [];
+        return;
+      }
+
+      final paginatedResults = validResults.sublist(
+        startIndex,
+        endIndex > validResults.length ? validResults.length : endIndex,
+      );
+
+      yield paginatedResults;
     } catch (e, stack) {
       _logger.severe('Error fetching up next episodes: $e', stack);
-      return [];
+      yield [];
     }
   }
 
-  Future<List<LibraryItem>> getContinueWatching() async {
+  Future<List<LibraryItem>> getContinueWatching(
+      {int page = 1, int itemsPerPage = 5}) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -327,6 +321,8 @@ class TraktService {
                     nextSeason: movie['episode']['season'],
                     nextEpisode: movie['episode']['number'],
                     nextEpisodeTitle: movie['episode']['title'],
+                    externalIds: movie['show']['ids'],
+                    episodeExternalIds: movie['episode']['ids'],
                   );
                 }
 
@@ -347,71 +343,28 @@ class TraktService {
             .toList(),
       );
 
-      return result.map((res) {
-        Meta returnValue = res as Meta;
+      // Pagination logic
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
 
-        if (progress.containsKey(res.id)) {
-          returnValue = res.copyWith(
-            progress: progress[res.id],
-          );
-        }
+      if (startIndex >= result.length) {
+        return [];
+      }
 
-        if (res.type == "series") {
-          return returnValue.copyWith();
-        }
-
-        return returnValue;
-      }).toList();
+      return result.sublist(
+        startIndex,
+        endIndex > result.length ? result.length : endIndex,
+      );
     } catch (e, stack) {
       _logger.severe('Error fetching continue watching: $e', stack);
       return [];
     }
   }
 
-  Future<void> _retryPostRequest(
-    String cacheKey,
-    String url,
-    Map<String, dynamic> body, {
-    int retryCount = 2,
+  Future<List<LibraryItem>> getUpcomingSchedule({
+    int page = 1,
+    int itemsPerPage = 5,
   }) async {
-    for (int i = 0; i < retryCount; i++) {
-      try {
-        await _checkRateLimit('POST');
-
-        _logger.info('Making POST request to $url');
-        final response = await http.post(
-          Uri.parse(url),
-          headers: headers,
-          body: json.encode(body),
-        );
-
-        if (response.statusCode == 201) {
-          _logger.info('POST request successful');
-          return;
-        } else if (response.statusCode == 429) {
-          _logger.warning('Rate limit hit, retrying...');
-          await Future.delayed(Duration(seconds: 10));
-          continue;
-        } else {
-          _logger.severe('Failed to make POST request: ${response.statusCode}');
-          throw Exception(
-              'Failed to make POST request: ${response.statusCode}');
-        }
-      } catch (e) {
-        if (i == retryCount - 1) {
-          _logger
-              .severe('Failed to make POST request after $retryCount attempts');
-          if (_cache.containsKey(cacheKey)) {
-            _logger.info('Returning cached data');
-            return _cache[cacheKey];
-          }
-          rethrow;
-        }
-      }
-    }
-  }
-
-  Future<List<LibraryItem>> getUpcomingSchedule() async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -443,14 +396,25 @@ class TraktService {
             .toList(),
       );
 
-      return result;
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      if (startIndex >= result.length) {
+        return [];
+      }
+
+      return result.sublist(
+        startIndex,
+        endIndex > result.length ? result.length : endIndex,
+      );
     } catch (e, stack) {
       _logger.severe('Error fetching upcoming schedule: $e', stack);
       return [];
     }
   }
 
-  Future<List<LibraryItem>> getWatchlist() async {
+  Future<List<LibraryItem>> getWatchlist(
+      {int page = 1, int itemsPerPage = 5}) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -461,6 +425,7 @@ class TraktService {
     try {
       _logger.info('Fetching watchlist');
       final watchlistItems = await _makeRequest('$_baseUrl/sync/watchlist');
+      _logger.info('Got watchlist');
 
       final result = await stremioService!.getBulkItem(
         watchlistItems
@@ -489,14 +454,25 @@ class TraktService {
             .toList(),
       );
 
-      return result;
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      if (startIndex >= result.length) {
+        return [];
+      }
+
+      return result.sublist(
+        startIndex,
+        endIndex > result.length ? result.length : endIndex,
+      );
     } catch (e, stack) {
       _logger.severe('Error fetching watchlist: $e', stack);
       return [];
     }
   }
 
-  Future<List<LibraryItem>> getShowRecommendations() async {
+  Future<List<LibraryItem>> getShowRecommendations(
+      {int page = 1, int itemsPerPage = 5}) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -527,14 +503,28 @@ class TraktService {
             .toList(),
       ));
 
-      return result;
+      // Pagination logic
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      if (startIndex >= result.length) {
+        return [];
+      }
+
+      return result.sublist(
+        startIndex,
+        endIndex > result.length ? result.length : endIndex,
+      );
     } catch (e, stack) {
       _logger.severe('Error fetching show recommendations: $e', stack);
       return [];
     }
   }
 
-  Future<List<LibraryItem>> getMovieRecommendations() async {
+  Future<List<LibraryItem>> getMovieRecommendations({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -544,8 +534,9 @@ class TraktService {
 
     try {
       _logger.info('Fetching movie recommendations');
-      final recommendedMovies =
-          await _makeRequest('$_baseUrl/recommendations/movies');
+      final recommendedMovies = await _makeRequest(
+        '$_baseUrl/recommendations/movies',
+      );
 
       final result = await stremioService!.getBulkItem(
         recommendedMovies
@@ -565,7 +556,18 @@ class TraktService {
             .toList(),
       );
 
-      return result;
+      // Pagination logic
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      if (startIndex >= result.length) {
+        return [];
+      }
+
+      return result.sublist(
+        startIndex,
+        endIndex > result.length ? result.length : endIndex,
+      );
     } catch (e, stack) {
       _logger.severe('Error fetching movie recommendations: $e', stack);
       return [];
@@ -624,10 +626,11 @@ class TraktService {
       return;
     }
 
-    await _checkRateLimit('POST');
-
     try {
       _logger.info('Starting scrobbling for ${meta.type} with ID: ${meta.id}');
+
+      print(_buildObjectForMeta(meta));
+
       final response = await http.post(
         Uri.parse('$_baseUrl/scrobble/start'),
         headers: headers,
@@ -660,6 +663,8 @@ class TraktService {
       return;
     }
 
+    print(_buildObjectForMeta(meta));
+
     final cacheKey = '${meta.id}_pauseScrobbling';
 
     _activeScrobbleRequests[cacheKey]?.completeError('Cancelled');
@@ -683,6 +688,50 @@ class TraktService {
     }
   }
 
+  Future<void> _retryPostRequest(
+    String cacheKey,
+    String url,
+    Map<String, dynamic> body, {
+    int retryCount = 2,
+  }) async {
+    for (int i = 0; i < retryCount; i++) {
+      try {
+        _logger.info('Making POST request to $url');
+        final response = await http.post(
+          Uri.parse(url),
+          headers: headers,
+          body: json.encode(body),
+        );
+
+        if (response.statusCode == 201) {
+          _logger.info('POST request successful');
+          return;
+        } else if (response.statusCode == 429) {
+          _logger.warning('Rate limit hit, retrying...');
+          await Future.delayed(
+            const Duration(seconds: 10),
+          );
+          continue;
+        } else {
+          _logger.severe('Failed to make POST request: ${response.statusCode}');
+          throw Exception(
+            'Failed to make POST request: ${response.statusCode}',
+          );
+        }
+      } catch (e) {
+        if (i == retryCount - 1) {
+          _logger
+              .severe('Failed to make POST request after $retryCount attempts');
+          if (_cache.containsKey(cacheKey)) {
+            _logger.info('Returning cached data');
+            return _cache[cacheKey];
+          }
+          rethrow;
+        }
+      }
+    }
+  }
+
   Future<void> stopScrobbling({
     required Meta meta,
     required double progress,
@@ -699,6 +748,7 @@ class TraktService {
 
     try {
       _logger.info('Stopping scrobbling for ${meta.type} with ID: ${meta.id}');
+      _logger.info(_buildObjectForMeta(meta));
       await _retryPostRequest(
         cacheKey,
         '$_baseUrl/scrobble/stop',
@@ -710,6 +760,11 @@ class TraktService {
 
       _cache.remove('$_baseUrl/sync/watched/shows');
       _cache.remove('$_baseUrl/sync/playback');
+
+      refetchKey.add([
+        "continue_watching",
+        if (meta.type == "series") "up_next_series",
+      ]);
     } catch (e, stack) {
       _logger.severe('Error stopping scrobbling: $e', stack);
       rethrow;
@@ -792,19 +847,3 @@ class TraktService {
     return [];
   }
 }
-
-class TraktProgress {
-  final String id;
-  final int? episode;
-  final int? season;
-  final double progress;
-
-  TraktProgress({
-    required this.id,
-    this.episode,
-    this.season,
-    required this.progress,
-  });
-}
-
-extension StaticInstance on CachedStorage {}

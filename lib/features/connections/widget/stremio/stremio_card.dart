@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 
-class StremioCard extends StatelessWidget {
+class StremioCard extends StatefulWidget {
   final LibraryItem item;
   final String prefix;
   final String connectionId;
@@ -21,8 +21,15 @@ class StremioCard extends StatelessWidget {
   });
 
   @override
+  State<StremioCard> createState() => _StremioCardState();
+}
+
+class _StremioCardState extends State<StremioCard> {
+  bool hasErrorWhileLoading = false;
+
+  @override
   Widget build(BuildContext context) {
-    final meta = item as Meta;
+    final meta = widget.item as Meta;
 
     return Card(
       margin: const EdgeInsets.only(right: 8),
@@ -36,10 +43,10 @@ class StremioCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: () {
             context.push(
-              "/info/stremio/$connectionId/${meta.type}/${meta.id}?hero=$prefix${meta.type}${item.id}",
+              "/info/stremio/${widget.connectionId}/${meta.type}/${meta.id}?hero=${widget.prefix}${meta.type}${widget.item.id}",
               extra: {
                 'meta': meta,
-                'service': service,
+                'service': widget.service,
               },
             );
           },
@@ -52,7 +59,7 @@ class StremioCard extends StatelessWidget {
   }
 
   bool get isInFuture {
-    final video = (item as Meta).currentVideo;
+    final video = (widget.item as Meta).currentVideo;
     return video != null &&
         video.firstAired != null &&
         video.firstAired!.isAfter(DateTime.now());
@@ -70,8 +77,15 @@ class StremioCard extends StatelessWidget {
         image: DecorationImage(
           image: CachedNetworkImageProvider(
             "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(
-              meta.currentVideo?.thumbnail ?? meta.background!,
+              hasErrorWhileLoading
+                  ? meta.background!
+                  : (meta.currentVideo?.thumbnail ?? meta.background!),
             )}@webp",
+            errorListener: (error) {
+              setState(() {
+                hasErrorWhileLoading = true;
+              });
+            },
             imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
           ),
           fit: BoxFit.cover,
@@ -130,7 +144,7 @@ class StremioCard extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      "S${meta.nextSeason} E${meta.nextEpisode}",
+                      "S${meta.currentVideo?.season ?? meta.nextSeason} E${meta.currentVideo?.episode ?? meta.nextEpisode}",
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Colors.black,
                           ),
@@ -254,7 +268,7 @@ class StremioCard extends StatelessWidget {
         meta.poster ?? meta.logo ?? getBackgroundImage(meta);
 
     return Hero(
-      tag: "$prefix${meta.type}${item.id}",
+      tag: "${widget.prefix}${meta.type}${widget.item.id}",
       child: (backgroundImage == null)
           ? Center(
               child: Column(

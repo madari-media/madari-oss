@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:madari_client/engine/engine.dart';
-import 'package:madari_client/features/trakt/service/trakt.service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../utils/auth_refresh.dart';
@@ -190,30 +189,6 @@ class _TraktIntegrationState extends State<TraktIntegration> {
         ),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) {
-                  return Scaffold(
-                    appBar: AppBar(
-                      title: const Text("Logs"),
-                    ),
-                    body: ListView.builder(
-                      itemCount: TraktService.instance!.debugLogs.length,
-                      itemBuilder: (context, item) {
-                        return Text(
-                          TraktService.instance!.debugLogs[item],
-                        );
-                      },
-                    ),
-                  );
-                }),
-              );
-            },
-            child: Text("Debug logs"),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -315,6 +315,7 @@ class Meta extends LibraryItem {
   final int? traktId;
 
   final dynamic externalIds;
+  final dynamic episodeExternalIds;
 
   bool forceRegularMode;
 
@@ -333,6 +334,13 @@ class Meta extends LibraryItem {
 
     return videos?.firstWhereOrNull(
       (episode) {
+        if (episode.tvdbId != null && episodeExternalIds != null) {
+          return episode.tvdbId == episodeExternalIds['tvdb'];
+        }
+
+        print(episode.tvdbId);
+        print(episodeExternalIds?['tvdb']);
+
         return nextEpisode == episode.episode && nextSeason == episode.season;
       },
     );
@@ -381,6 +389,7 @@ class Meta extends LibraryItem {
     this.language,
     this.dvdRelease,
     this.progress,
+    this.episodeExternalIds,
   }) : super(id: id);
 
   Meta copyWith({
@@ -403,6 +412,8 @@ class Meta extends LibraryItem {
     List<String>? writer,
     String? background,
     String? logo,
+    dynamic externalIds,
+    dynamic episodeExternalIds,
     String? awards,
     int? moviedbId,
     String? runtime,
@@ -440,6 +451,7 @@ class Meta extends LibraryItem {
         year: year ?? this.year,
         status: status ?? this.status,
         tvdbId: tvdbId ?? this.tvdbId,
+        externalIds: externalIds ?? this.externalIds,
         director: director ?? this.director,
         writer: writer ?? this.writer,
         background: background ?? this.background,
@@ -464,6 +476,7 @@ class Meta extends LibraryItem {
         nextEpisodeTitle: nextEpisodeTitle ?? this.nextEpisodeTitle,
         nextSeason: nextSeason ?? this.nextSeason,
         progress: progress ?? this.progress,
+        episodeExternalIds: episodeExternalIds ?? this.episodeExternalIds,
       );
 
   factory Meta.fromJson(Map<String, dynamic> json) {

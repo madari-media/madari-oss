@@ -128,7 +128,8 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
       context: context,
       builder: (context) {
         final meta = widget.meta.copyWith(
-          id: episode.id,
+          nextSeason: currentSeason,
+          nextEpisode: episode.episode,
         );
 
         return Scaffold(
@@ -139,6 +140,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
             service: widget.service!,
             id: meta,
             season: currentSeason.toString(),
+            episode: episode.number?.toString(),
             shouldPop: widget.shouldPop,
           ),
         );
