@@ -755,6 +755,7 @@ class TraktService {
     required Meta meta,
     required double progress,
     bool shouldClearCache = false,
+    int? traktId,
   }) async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
@@ -783,6 +784,7 @@ class TraktService {
         _cache.remove('$_baseUrl/sync/playback');
 
         final keys = [
+          if (traktId != null) "$_baseUrl/shows/$traktId/progress/watched",
           "continue_watching",
           if (meta.type == "series") "up_next_series",
         ];
@@ -821,7 +823,7 @@ class TraktService {
           }
 
           final isShow =
-              item["show"]["ids"]["imdb"] == (meta.imdbId ?? meta.id);
+              item["show"]?["ids"]?["imdb"] == (meta.imdbId ?? meta.id);
 
           final currentEpisode = item["episode"]["number"];
           final currentSeason = item["episode"]["season"];
@@ -835,6 +837,7 @@ class TraktService {
                   progress: item["progress"]!,
                   episode: currentEpisode,
                   season: currentSeason,
+                  traktId: item["show"]["ids"]["trakt"],
                 ),
               );
             }

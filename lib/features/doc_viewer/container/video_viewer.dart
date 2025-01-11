@@ -180,6 +180,8 @@ class _VideoViewerState extends State<VideoViewer> {
 
   bool canCallOnce = false;
 
+  int? traktId;
+
   Future<void> setDurationFromTrakt() async {
     if (player.state.duration.inSeconds < 2) {
       return;
@@ -203,10 +205,12 @@ class _VideoViewerState extends State<VideoViewer> {
       return;
     }
 
+    traktId = progress!.first.traktId;
+
     final duration = Duration(
       seconds: calculateSecondsFromProgress(
         player.state.duration.inSeconds.toDouble(),
-        progress!.first.progress,
+        progress.first.progress,
       ),
     );
 
@@ -406,6 +410,7 @@ class _VideoViewerState extends State<VideoViewer> {
         meta: widget.meta as types.Meta,
         progress: currentProgressInPercentage,
         shouldClearCache: true,
+        traktId: traktId,
       );
     }
 
