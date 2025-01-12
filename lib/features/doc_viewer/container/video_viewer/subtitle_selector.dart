@@ -183,7 +183,7 @@ class _SubtitleSelectorState extends State<SubtitleSelector> {
 
                           return ListTile(
                             title: Text(
-                              "${languages.containsKey(title) ? languages[title]! : title == "no" ? "No subtitle" : title} ${isExternal ? "(External)" : ""}",
+                              "${languages.containsKey(title) ? languages[title]! : title == "no" ? "No subtitle" : title} ${isExternal ? "(External) (${Uri.parse(currentItem.id).host})" : ""}",
                             ),
                             selected: widget.player.state.track.subtitle.id ==
                                 currentItem.id,

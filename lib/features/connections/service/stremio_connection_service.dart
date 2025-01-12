@@ -648,9 +648,9 @@ class StremioConfig {
 class Subtitle {
   final String id;
   final String url;
-  final String subEncoding;
-  final String lang;
-  final String m;
+  final String? subEncoding;
+  final String? lang;
+  final String? m;
   final String? g; // Making g optional since some entries have empty string
 
   const Subtitle({
@@ -666,9 +666,9 @@ class Subtitle {
     return Subtitle(
       id: json['id'] as String,
       url: json['url'] as String,
-      subEncoding: json['SubEncoding'] as String,
-      lang: json['lang'] as String,
-      m: json['m'] as String,
+      subEncoding: json['SubEncoding'] as String?,
+      lang: json['lang'] as String?,
+      m: json['m'] as String?,
       g: json['g'] as String?,
     );
   }
