@@ -108,6 +108,7 @@ class _VideoViewerUiState extends State<VideoViewerUi> {
     final listenerComplete = widget.player.stream.completed.listen((completed) {
       if (completed) {
         widget.onLibrarySelect();
+        key.currentState?.exitFullscreen();
       }
     });
 

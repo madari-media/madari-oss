@@ -81,7 +81,7 @@ class _SubtitleSelectorState extends State<SubtitleSelector> {
   void onPlaybackReady(Tracks tracks) {
     setState(() {
       subtitles = tracks.subtitle.where((item) {
-        return item.id != "auto";
+        return item.id != "auto" && item.id != "no";
       }).toList();
     });
   }

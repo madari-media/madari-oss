@@ -51,10 +51,7 @@ class TraktContainerState extends State<TraktContainer> {
     _steam = TraktService.instance?.refetchKey.stream.listen((item) {
       if (item.contains(widget.loadId)) {
         _logger.info("refreshing widget ${widget.loadId}");
-        Future.delayed(
-          const Duration(seconds: 1),
-          refresh,
-        );
+        refresh();
       }
     });
 

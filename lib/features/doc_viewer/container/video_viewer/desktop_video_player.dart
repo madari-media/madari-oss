@@ -18,7 +18,7 @@ MaterialDesktopVideoControlsThemeData getDesktopControls(
   required Function() onAudioSelect,
 }) {
   return MaterialDesktopVideoControlsThemeData(
-    toggleFullscreenOnDoublePress: false,
+    toggleFullscreenOnDoublePress: true,
     displaySeekBar: true,
     topButtonBar: [
       SafeArea(
