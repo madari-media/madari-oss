@@ -52,7 +52,7 @@ class TraktContainerState extends State<TraktContainer> {
       if (item.contains(widget.loadId)) {
         _logger.info("refreshing widget ${widget.loadId}");
         _cachedItems = [];
-        _loadData();
+        refresh();
       }
     });
 
