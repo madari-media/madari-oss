@@ -159,7 +159,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
               return const Text("Loading");
             }
 
-            if (data.data.isEmpty) {
+            if (data.data.isEmpty && widget.defaultLibraries != null) {
               return Padding(
                 padding: const EdgeInsets.only(
                   bottom: 24,

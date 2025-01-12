@@ -298,8 +298,7 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
               query.getNextPage();
             },
             itemScrollController: _scrollController,
-            isLoadingMore: data.status == QueryStatus.loading ||
-                data.status == QueryStatus.loading && items.isEmpty,
+            isLoadingMore: data.status == QueryStatus.loading && items.isEmpty,
             isGrid: widget.isGrid,
             items: items,
             heroPrefix: widget.item.id,
@@ -440,10 +439,6 @@ class RenderListItems extends StatelessWidget {
               ),
             ),
         ] else ...[
-          if (isLoadingMore)
-            const SliverToBoxAdapter(
-              child: SpinnerCards(),
-            ),
           if (!isLoadingMore)
             SliverToBoxAdapter(
               child: SizedBox(
@@ -467,6 +462,12 @@ class RenderListItems extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   itemCount: items.length,
                 ),
+              ),
+            ),
+          if (isLoadingMore)
+            SliverToBoxAdapter(
+              child: SpinnerCards(
+                isWide: isWide,
               ),
             ),
         ],

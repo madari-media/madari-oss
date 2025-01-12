@@ -9,13 +9,10 @@ import '../../types/doc_source.dart';
 MaterialVideoControlsThemeData getMobileVideoPlayer(
   BuildContext context, {
   required DocSource source,
-  required List<SubtitleTrack> subtitles,
-  required List<AudioTrack> audioTracks,
   required Player player,
   required VoidCallback onSubtitleClick,
   required VoidCallback onAudioClick,
   required VoidCallback toggleScale,
-  required bool hasLibrary,
   required VoidCallback onLibrarySelect,
 }) {
   final mediaQuery = MediaQuery.of(context);
@@ -37,13 +34,6 @@ MaterialVideoControlsThemeData getMobileVideoPlayer(
         style: Theme.of(context).textTheme.bodyLarge,
       ),
       const Spacer(),
-      if (hasLibrary)
-        MaterialCustomButton(
-          icon: const Icon(Icons.library_books),
-          onPressed: () {
-            onLibrarySelect();
-          },
-        ),
     ],
     bufferingIndicatorBuilder: (source is TorrentSource)
         ? (ctx) {

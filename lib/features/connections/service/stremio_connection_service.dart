@@ -10,6 +10,7 @@ import 'package:madari_client/features/connections/types/base/base.dart';
 import 'package:madari_client/features/connections/widget/stremio/stremio_card.dart';
 import 'package:madari_client/features/connections/widget/stremio/stremio_list_item.dart';
 import 'package:madari_client/features/doc_viewer/types/doc_source.dart';
+import 'package:madari_client/utils/common.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../../connection/services/stremio_service.dart';
@@ -125,6 +126,63 @@ class StremioConnectionService extends BaseConnectionService {
 
     _logger.finer('Config parsed successfully: $configItems');
     return configItems;
+  }
+
+  Stream<List<Subtitle>> getSubtitles(Meta record) async* {
+    final List<Subtitle> subtitles = [];
+
+    _logger.info('getting subtitles');
+
+    for (final addon in config.addons) {
+      final manifest = await _getManifest(addon);
+
+      final resource = manifest.resources
+          ?.firstWhereOrNull((res) => res.name == "subtitles");
+
+      if (resource == null) {
+        continue;
+      }
+
+      final types = resource.types ?? manifest.types ?? [];
+      final idPrefixes =
+          resource.idPrefixes ?? resource.idPrefix ?? manifest.idPrefixes;
+
+      if (!types.contains(record.type)) {
+        continue;
+      }
+
+      final hasPrefixMatch = idPrefixes?.firstWhereOrNull((item) {
+        return record.id.startsWith(item);
+      });
+
+      if (hasPrefixMatch == null) {
+        continue;
+      }
+
+      final addonBase = _getAddonBaseURL(addon);
+
+      final url =
+          "$addonBase/subtitles/${record.type}/${Uri.encodeQueryComponent(record.currentVideo?.id ?? record.id)}.json";
+
+      _logger.info('loading subtitles from $url');
+
+      final body = await http.get(Uri.parse(url));
+
+      if (body.statusCode != 200) {
+        _logger.warning('failed due to status code ${body.statusCode}');
+        continue;
+      }
+
+      final dataBody = jsonDecode(body.body);
+
+      try {
+        final responses = SubtitleResponse.fromJson(dataBody);
+        subtitles.addAll(responses.subtitles);
+        yield subtitles;
+      } catch (e) {
+        _logger.warning("failed to parse subtitle response");
+      }
+    }
   }
 
   @override
@@ -585,4 +643,70 @@ class StremioConfig {
       _$StremioConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$StremioConfigToJson(this);
+}
+
+class Subtitle {
+  final String id;
+  final String url;
+  final String subEncoding;
+  final String lang;
+  final String m;
+  final String? g; // Making g optional since some entries have empty string
+
+  const Subtitle({
+    required this.id,
+    required this.url,
+    required this.subEncoding,
+    required this.lang,
+    required this.m,
+    this.g,
+  });
+
+  factory Subtitle.fromJson(Map<String, dynamic> json) {
+    return Subtitle(
+      id: json['id'] as String,
+      url: json['url'] as String,
+      subEncoding: json['SubEncoding'] as String,
+      lang: json['lang'] as String,
+      m: json['m'] as String,
+      g: json['g'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'url': url,
+      'SubEncoding': subEncoding,
+      'lang': lang,
+      'm': m,
+      'g': g,
+    };
+  }
+}
+
+class SubtitleResponse {
+  final List<Subtitle> subtitles;
+  final int? cacheMaxAge;
+
+  const SubtitleResponse({
+    required this.subtitles,
+    required this.cacheMaxAge,
+  });
+
+  factory SubtitleResponse.fromJson(Map<String, dynamic> json) {
+    return SubtitleResponse(
+      subtitles: (json['subtitles'] as List)
+          .map((e) => Subtitle.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      cacheMaxAge: json['cacheMaxAge'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'subtitles': subtitles.map((e) => e.toJson()).toList(),
+      'cacheMaxAge': cacheMaxAge,
+    };
+  }
 }

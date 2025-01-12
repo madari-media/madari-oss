@@ -12,8 +12,6 @@ import 'package:window_manager/window_manager.dart';
 MaterialDesktopVideoControlsThemeData getDesktopControls(
   BuildContext context, {
   required DocSource source,
-  required List<SubtitleTrack> subtitles,
-  required List<AudioTrack> audioTracks,
   required Player player,
   Widget? library,
   required Function() onSubtitleSelect,

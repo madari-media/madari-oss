@@ -159,6 +159,7 @@ class TraktContainerState extends State<TraktContainer> {
     try {
       _logger.info('Refreshing data for ${widget.loadId}');
       _cachedItems = [];
+      _currentPage = 0;
       await _loadData();
     } catch (e) {}
   }

@@ -205,8 +205,10 @@ class TraktService {
     }
   }
 
-  Stream<List<LibraryItem>> getUpNextSeries(
-      {int page = 1, int itemsPerPage = 5}) async* {
+  Stream<List<LibraryItem>> getUpNextSeries({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async* {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -220,7 +222,30 @@ class TraktService {
       final List<dynamic> watchedShows =
           await _makeRequest('$_baseUrl/sync/watched/shows');
 
-      final progressFutures = watchedShows.map((show) async {
+      final startIndex = (page - 1) * itemsPerPage;
+      final endIndex = startIndex + itemsPerPage;
+
+      final items = watchedShows.where((show) {
+        try {
+          show['show']['ids']['trakt'];
+          show['show']['ids']['imdb'];
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }).toList();
+
+      if (startIndex >= items.length) {
+        yield [];
+        return;
+      }
+
+      final paginatedItems = items.sublist(
+        startIndex,
+        endIndex > items.length ? items.length : endIndex,
+      );
+
+      final progressFutures = paginatedItems.map((show) async {
         final showId = show['show']['ids']['trakt'];
         final imdb = show['show']['ids']['imdb'];
 
@@ -262,19 +287,7 @@ class TraktService {
       final results = await Future.wait(progressFutures);
       final validResults = results.whereType<Meta>().toList();
 
-      // Pagination logic
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
-
-      if (startIndex >= validResults.length) {
-        yield [];
-        return;
-      }
-
-      final paginatedResults = validResults.sublist(
-        startIndex,
-        endIndex > validResults.length ? validResults.length : endIndex,
-      );
+      final paginatedResults = validResults;
 
       yield paginatedResults;
     } catch (e, stack) {
@@ -298,54 +311,57 @@ class TraktService {
 
       final Map<String, double> progress = {};
 
-      final result = await stremioService!.getBulkItem(
-        continueWatching
-            .map((movie) {
-              try {
-                if (movie['type'] == 'episode') {
-                  progress[movie['show']['ids']['imdb']] = movie['progress'];
-
-                  return Meta(
-                    type: "series",
-                    id: movie['show']['ids']['imdb'],
-                    progress: movie['progress'],
-                    nextSeason: movie['episode']['season'],
-                    nextEpisode: movie['episode']['number'],
-                    nextEpisodeTitle: movie['episode']['title'],
-                    externalIds: movie['show']['ids'],
-                    episodeExternalIds: movie['episode']['ids'],
-                  );
-                }
-
-                final imdb = movie['movie']['ids']['imdb'];
-                progress[imdb] = movie['progress'];
+      final metaList = continueWatching
+          .map((movie) {
+            try {
+              if (movie['type'] == 'episode') {
+                progress[movie['show']['ids']['imdb']] = movie['progress'];
 
                 return Meta(
-                  type: "movie",
-                  id: imdb,
+                  type: "series",
+                  id: movie['show']['ids']['imdb'],
                   progress: movie['progress'],
+                  nextSeason: movie['episode']['season'],
+                  nextEpisode: movie['episode']['number'],
+                  nextEpisodeTitle: movie['episode']['title'],
+                  externalIds: movie['show']['ids'],
+                  episodeExternalIds: movie['episode']['ids'],
                 );
-              } catch (e) {
-                _logger.warning('Error mapping movie: $e');
-                return null;
               }
-            })
-            .whereType<Meta>()
-            .toList(),
-      );
 
-      // Pagination logic
+              final imdb = movie['movie']['ids']['imdb'];
+              progress[imdb] = movie['progress'];
+
+              return Meta(
+                type: "movie",
+                id: imdb,
+                progress: movie['progress'],
+              );
+            } catch (e) {
+              _logger.warning('Error mapping movie: $e');
+              return null;
+            }
+          })
+          .whereType<Meta>()
+          .toList();
+
       final startIndex = (page - 1) * itemsPerPage;
       final endIndex = startIndex + itemsPerPage;
 
-      if (startIndex >= result.length) {
+      if (startIndex >= metaList.length) {
         return [];
       }
 
-      return result.sublist(
-        startIndex,
-        endIndex > result.length ? result.length : endIndex,
+      final result = await stremioService!.getBulkItem(
+        metaList
+            .sublist(
+              startIndex,
+              endIndex > metaList.length ? metaList.length : endIndex,
+            )
+            .toList(),
       );
+
+      return result;
     } catch (e, stack) {
       _logger.severe('Error fetching continue watching: $e', stack);
       return [];

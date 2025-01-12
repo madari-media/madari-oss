@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -7,9 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
-import 'package:madari_client/features/doc_viewer/container/video_viewer/tv_controls.dart';
 import 'package:madari_client/features/watch_history/service/base_watch_history.dart';
-import 'package:madari_client/utils/tv_detector.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -20,8 +17,7 @@ import '../../trakt/service/trakt.service.dart';
 import '../../trakt/types/common.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
-import 'video_viewer/desktop_video_player.dart';
-import 'video_viewer/mobile_video_player.dart';
+import 'video_viewer/video_viewer_ui.dart';
 
 class VideoViewer extends StatefulWidget {
   final DocSource source;
@@ -44,7 +40,6 @@ class VideoViewer extends StatefulWidget {
 }
 
 class _VideoViewerState extends State<VideoViewer> {
-  StreamSubscription? _subTracks;
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
   Timer? _timer;
   late final Player player = Player(
@@ -52,7 +47,6 @@ class _VideoViewerState extends State<VideoViewer> {
       title: "Madari",
     ),
   );
-  late final GlobalKey<VideoState> key = GlobalKey<VideoState>();
   final Logger _logger = Logger('VideoPlayer');
 
   double get currentProgressInPercentage {
@@ -120,63 +114,7 @@ class _VideoViewerState extends State<VideoViewer> {
     ),
   );
 
-  List<SubtitleTrack> subtitles = [];
-  List<AudioTrack> audioTracks = [];
-  Map<String, String> languages = {};
-
   late DocSource _source;
-
-  void setDefaultAudioTracks(Tracks tracks) {
-    if (defaultConfigSelected == true &&
-        (tracks.audio.length <= 1 || tracks.audio.length <= 1)) {
-      return;
-    }
-
-    defaultConfigSelected = true;
-
-    controller.player.setRate(config.playbackSpeed);
-
-    final defaultSubtitle = config.defaultSubtitleTrack;
-    final defaultAudio = config.defaultAudioTrack;
-
-    for (final item in tracks.audio) {
-      if (defaultAudio == item.id ||
-          defaultAudio == item.language ||
-          defaultAudio == item.title) {
-        controller.player.setAudioTrack(item);
-        break;
-      }
-    }
-
-    if (config.disableSubtitle) {
-      for (final item in tracks.subtitle) {
-        if (item.id == "no" || item.language == "no" || item.title == "no") {
-          controller.player.setSubtitleTrack(item);
-        }
-      }
-    } else {
-      for (final item in tracks.subtitle) {
-        if (defaultSubtitle == item.id ||
-            defaultSubtitle == item.language ||
-            defaultSubtitle == item.title) {
-          controller.player.setSubtitleTrack(item);
-          break;
-        }
-      }
-    }
-  }
-
-  void onPlaybackReady(Tracks tracks) {
-    setState(() {
-      audioTracks = tracks.audio.where((item) {
-        return item.id != "auto" && item.id != "no";
-      }).toList();
-
-      subtitles = tracks.subtitle.where((item) {
-        return item.id != "auto";
-      }).toList();
-    });
-  }
 
   bool canCallOnce = false;
 
@@ -222,8 +160,6 @@ class _VideoViewerState extends State<VideoViewer> {
 
   PlaybackConfig config = getPlaybackConfig();
 
-  bool defaultConfigSelected = false;
-
   @override
   void initState() {
     super.initState();
@@ -234,39 +170,10 @@ class _VideoViewerState extends State<VideoViewer> {
       overlays: [],
     );
 
-    if (!kIsWeb) {
-      if (Platform.isAndroid || Platform.isIOS) {
-        WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-          key.currentState?.enterFullscreen();
-        });
-      }
-    }
-
     _duration = player.stream.duration.listen((item) async {
       if (item.inSeconds != 0) {
         await setDurationFromTrakt();
         await saveWatchHistory();
-      }
-    });
-
-    _streamComplete = player.stream.completed.listen((completed) {
-      if (completed) {
-        onLibrarySelect();
-      }
-    });
-
-    _subTracks = player.stream.tracks.listen((tracks) {
-      if (mounted) {
-        setDefaultAudioTracks(tracks);
-        onPlaybackReady(tracks);
-      }
-    });
-
-    loadLanguages(context).then((language) {
-      if (mounted) {
-        setState(() {
-          languages = language;
-        });
       }
     });
 
@@ -288,7 +195,7 @@ class _VideoViewerState extends State<VideoViewer> {
       }
     });
 
-    if (widget.meta is types.Meta) {
+    if (widget.meta is types.Meta && TraktService.isEnabled()) {
       traktProgress = TraktService.instance!.getProgress(
         widget.meta as types.Meta,
       );
@@ -342,8 +249,6 @@ class _VideoViewerState extends State<VideoViewer> {
         );
     }
   }
-
-  bool isScaled = false;
 
   late StreamSubscription<bool> _streamComplete;
   late StreamSubscription<bool> _streamListen;
@@ -400,8 +305,6 @@ class _VideoViewerState extends State<VideoViewer> {
       overlays: [],
     );
     _timer?.cancel();
-    _subTracks?.cancel();
-    _streamComplete.cancel();
     _streamListen.cancel();
     _duration.cancel();
 
@@ -422,226 +325,15 @@ class _VideoViewerState extends State<VideoViewer> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildBody(context),
-    );
-  }
-
-  _buildMobileView(BuildContext context) {
-    final mobile = getMobileVideoPlayer(
-      context,
-      onLibrarySelect: onLibrarySelect,
-      hasLibrary: widget.service != null &&
-          widget.library != null &&
-          widget.meta != null,
-      audioTracks: audioTracks,
-      player: player,
-      source: _source,
-      subtitles: subtitles,
-      onSubtitleClick: onSubtitleSelect,
-      onAudioClick: onAudioSelect,
-      toggleScale: () {
-        setState(() {
-          isScaled = !isScaled;
-        });
-      },
-    );
-    String subtitleStyleName = config.subtitleStyle ?? 'Normal';
-    String subtitleStyleColor = config.subtitleColor ?? 'white';
-    double subtitleSize = config.subtitleSize;
-
-    Color hexToColor(String hexColor) {
-      final hexCode = hexColor.replaceAll('#', '');
-      try {
-        return Color(int.parse('0x$hexCode'));
-      } catch (e) {
-        return Colors.white;
-      }
-    }
-
-    FontStyle getFontStyleFromString(String styleName) {
-      switch (styleName.toLowerCase()) {
-        case 'italic':
-          return FontStyle.italic;
-        case 'normal':
-        default:
-          return FontStyle.normal;
-      }
-    }
-
-    FontStyle currentFontStyle = getFontStyleFromString(subtitleStyleName);
-    return MaterialVideoControlsTheme(
-      fullscreen: mobile,
-      normal: mobile,
-      child: Video(
-        subtitleViewConfiguration: SubtitleViewConfiguration(
-          style: TextStyle(
-              color: hexToColor(subtitleStyleColor),
-              fontSize: subtitleSize,
-              fontStyle: currentFontStyle,
-              fontWeight: FontWeight.bold),
-        ),
-        fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
-        pauseUponEnteringBackgroundMode: true,
-        key: key,
-        onExitFullscreen: () async {
-          await defaultExitNativeFullscreen();
-          if (context.mounted) Navigator.of(context).pop();
-        },
+      body: VideoViewerUi(
         controller: controller,
-        controls: MaterialVideoControls,
-      ),
-    );
-  }
-
-  _buildDesktop(BuildContext context) {
-    final desktop = getDesktopControls(
-      context,
-      audioTracks: audioTracks,
-      player: player,
-      source: _source,
-      subtitles: subtitles,
-      onAudioSelect: onAudioSelect,
-      onSubtitleSelect: onSubtitleSelect,
-    );
-
-    return MaterialDesktopVideoControlsTheme(
-      normal: desktop,
-      fullscreen: desktop,
-      child: Video(
-        key: key,
-        width: MediaQuery.of(context).size.width,
-        fit: BoxFit.fitWidth,
-        controller: controller,
-        controls: MaterialDesktopVideoControls,
-      ),
-    );
-  }
-
-  _buildBody(BuildContext context) {
-    if (DeviceDetector.isTV()) {
-      return MaterialTvVideoControlsTheme(
-        fullscreen: const MaterialTvVideoControlsThemeData(),
-        normal: const MaterialTvVideoControlsThemeData(),
-        child: Video(
-          key: key,
-          width: MediaQuery.of(context).size.width,
-          fit: BoxFit.fitWidth,
-          controller: controller,
-          controls: MaterialTvVideoControls,
-        ),
-      );
-    }
-
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.android:
-      case TargetPlatform.iOS:
-        return _buildMobileView(context);
-      default:
-        return _buildDesktop(context);
-    }
-  }
-
-  onSubtitleSelect() {
-    _logger.info('Subtitle selection triggered.');
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Card(
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.4,
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Select Subtitle',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: subtitles.length,
-                  itemBuilder: (context, index) {
-                    final currentItem = subtitles[index];
-
-                    final title = currentItem.language ??
-                        currentItem.title ??
-                        currentItem.id;
-
-                    return ListTile(
-                      title: Text(
-                        languages.containsKey(title)
-                            ? languages[title]!
-                            : title,
-                      ),
-                      selected:
-                          player.state.track.subtitle.id == currentItem.id,
-                      onTap: () {
-                        player.setSubtitleTrack(currentItem);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  onAudioSelect() {
-    _logger.info('Audio track selection triggered.');
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Card(
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.4,
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Select Audio Track',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: audioTracks.length,
-                  itemBuilder: (context, index) {
-                    final currentItem = audioTracks[index];
-                    final title = currentItem.language ??
-                        currentItem.title ??
-                        currentItem.id;
-                    return ListTile(
-                      title: Text(
-                        languages.containsKey(title)
-                            ? languages[title]!
-                            : title,
-                      ),
-                      selected: player.state.track.audio.id == currentItem.id,
-                      onTap: () {
-                        player.setAudioTrack(currentItem);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+        player: player,
+        config: config,
+        source: _source,
+        onLibrarySelect: onLibrarySelect,
+        title: _source.title,
+        service: widget.service,
+        meta: widget.meta,
       ),
     );
   }

@@ -95,7 +95,11 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
 
     final docs = await zeeeWatchHistory!.getItemWatchHistory(
       ids: widget.meta.videos!.map((item) {
-        return WatchHistoryGetRequest(id: item.id);
+        return WatchHistoryGetRequest(
+          id: item.id,
+          episode: item.episode.toString(),
+          season: item.season.toString(),
+        );
       }).toList(),
     );
 
@@ -138,11 +142,13 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           ),
           body: RenderStreamList(
             service: widget.service!,
-            id: meta.copyWith(
-              episodeExternalIds: {
-                "tvdb": episode.tvdbId,
-              },
-            ),
+            id: episode.tvdbId != null
+                ? meta.copyWith(
+                    episodeExternalIds: {
+                      "tvdb": episode.tvdbId,
+                    },
+                  )
+                : meta,
             season: currentSeason.toString(),
             episode: episode.number?.toString(),
             shouldPop: widget.shouldPop,
