@@ -33,6 +33,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     'normal',
     'italic',
   ];
+  bool _softwareAcceleration = false;
   String? _selectedSubtitleStyle;
   String colorToHex(Color color) {
     return '#${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
@@ -122,6 +123,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
     _defaultAudioTrack = playbackConfig.defaultAudioTrack;
     _defaultSubtitleTrack = playbackConfig.defaultSubtitleTrack;
     _enableExternalPlayer = playbackConfig.externalPlayer;
+    _softwareAcceleration = playbackConfig.softwareAcceleration;
     _defaultPlayerId =
         playbackConfig.externalPlayerId?.containsKey(currentPlatform) == true
             ? playbackConfig.externalPlayerId![currentPlatform]
@@ -175,6 +177,7 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
           'subtitleStyle': _selectedSubtitleStyle,
           'subtitleColor': colorToHex(_selectedSubtitleColor),
           'subtitleSize': _subtitleSize,
+          'softwareAcceleration': _softwareAcceleration,
         },
       };
 
@@ -233,184 +236,200 @@ class _PlaybackSettingsScreenState extends State<PlaybackSettingsScreen> {
       appBar: AppBar(
         title: const Text('Playback Settings'),
       ),
-      body: ListView(
-        children: [
-          SwitchListTile(
-            title: const Text('Auto-play'),
-            subtitle: const Text('Automatically play next content'),
-            value: _autoPlay,
-            onChanged: (value) {
-              setState(() => _autoPlay = value);
-              _debouncedSave();
-            },
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: 600,
           ),
-          ListTile(
-            title: const Text('Playback Speed'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Slider(
-                  value: _playbackSpeed,
-                  min: 0.5,
-                  max: 5.0,
-                  divisions: 18,
-                  label: '${_playbackSpeed.toStringAsFixed(2)}x',
-                  onChanged: (value) {
-                    HapticFeedback.mediumImpact();
-                    setState(() => _playbackSpeed =
-                        double.parse(value.toStringAsFixed(2)));
-                    _debouncedSave();
-                  },
-                ),
-                Text('Current: ${_playbackSpeed.toStringAsFixed(2)}x'),
-              ],
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('Default Audio Track'),
-            trailing: DropdownButton<String>(
-              value: _defaultAudioTrack,
-              items: dropdown,
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _defaultAudioTrack = value);
-                  _debouncedSave();
-                }
-              },
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Disable Subtitle'),
-            value: _disabledSubtitle,
-            onChanged: (value) {
-              setState(() => _disabledSubtitle = value);
-              _debouncedSave();
-            },
-          ),
-          if (!_disabledSubtitle) ...[
-            ListTile(
-              title: const Text('Default Subtitle Track'),
-              trailing: DropdownButton<String>(
-                value: _defaultSubtitleTrack,
-                items: dropdown,
+          child: ListView(
+            children: [
+              SwitchListTile(
+                title: const Text('Auto-play'),
+                subtitle: const Text('Automatically play next content'),
+                value: _autoPlay,
                 onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _defaultSubtitleTrack = value);
-                    _debouncedSave();
-                  }
+                  setState(() => _autoPlay = value);
+                  _debouncedSave();
                 },
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Material(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.8,
+              ListTile(
+                title: const Text('Playback Speed'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Slider(
+                      value: _playbackSpeed,
+                      min: 0.5,
+                      max: 5.0,
+                      divisions: 18,
+                      label: '${_playbackSpeed.toStringAsFixed(2)}x',
+                      onChanged: (value) {
+                        HapticFeedback.mediumImpact();
+                        setState(() => _playbackSpeed =
+                            double.parse(value.toStringAsFixed(2)));
+                        _debouncedSave();
+                      },
+                    ),
+                    Text('Current: ${_playbackSpeed.toStringAsFixed(2)}x'),
+                  ],
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                title: const Text('Default Audio Track'),
+                trailing: DropdownButton<String>(
+                  value: _defaultAudioTrack,
+                  items: dropdown,
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _defaultAudioTrack = value);
+                      _debouncedSave();
+                    }
+                  },
+                ),
+              ),
+              SwitchListTile(
+                title: const Text('Software Acceleration'),
+                value: _softwareAcceleration,
+                onChanged: (value) {
+                  setState(() => _softwareAcceleration = value);
+                  _debouncedSave();
+                },
+              ),
+              SwitchListTile(
+                title: const Text('Disable Subtitle'),
+                value: _disabledSubtitle,
+                onChanged: (value) {
+                  setState(() => _disabledSubtitle = value);
+                  _debouncedSave();
+                },
+              ),
+              if (!_disabledSubtitle) ...[
+                ListTile(
+                  title: const Text('Default Subtitle Track'),
+                  trailing: DropdownButton<String>(
+                    value: _defaultSubtitleTrack,
+                    items: dropdown,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _defaultSubtitleTrack = value);
+                        _debouncedSave();
+                      }
+                    },
                   ),
-                  child: Text(
-                    'Sample Text',
-                    textAlign: TextAlign.center, // Center text within its box
-                    style: TextStyle(
-                      fontSize: _subtitleSize / 2,
-                      color: _selectedSubtitleColor,
-                      fontStyle: _subtitleStyle[0].toLowerCase() == 'italic'
-                          ? FontStyle.italic
-                          : FontStyle.normal,
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Material(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.8,
+                      ),
+                      child: Text(
+                        'Sample Text',
+                        textAlign:
+                            TextAlign.center, // Center text within its box
+                        style: TextStyle(
+                          fontSize: _subtitleSize / 2,
+                          color: _selectedSubtitleColor,
+                          fontStyle: _subtitleStyle[0].toLowerCase() == 'italic'
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            ListTile(
-              title: const Text('Subtitle Style'),
-              trailing: DropdownButton<String>(
-                value: _selectedSubtitleStyle,
-                items: dropdownstyle,
-                onChanged: (value) {
-                  HapticFeedback.mediumImpact();
-                  if (value != null) {
-                    setState(() {
-                      _selectedSubtitleStyle = value;
-                    });
-                    _debouncedSave();
-                  }
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Subtitle Color'),
-              trailing: GestureDetector(
-                // Use GestureDetector to make the color display tappable
-                onTap: () => _showColorPickerDialog(context),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _selectedSubtitleColor,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: Colors.grey),
-                  ),
-                ),
-              ),
-            ),
-            ListTile(
-              title: const Text('Font Size'),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Slider(
-                    value: _subtitleSize,
-                    min: 10.0,
-                    max: 60.0,
-                    divisions: 18,
-                    label: '${_subtitleSize.toStringAsFixed(2)}x',
+                ListTile(
+                  title: const Text('Subtitle Style'),
+                  trailing: DropdownButton<String>(
+                    value: _selectedSubtitleStyle,
+                    items: dropdownstyle,
                     onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(
-                        () => _subtitleSize =
-                            double.parse(value.toStringAsFixed(2)),
-                      );
-                      _debouncedSave();
+                      HapticFeedback.mediumImpact();
+                      if (value != null) {
+                        setState(() {
+                          _selectedSubtitleStyle = value;
+                        });
+                        _debouncedSave();
+                      }
                     },
                   ),
-                  Text('Current: ${_subtitleSize.toStringAsFixed(2)}x'),
-                ],
-              ),
-            ),
-          ],
-          const Divider(),
-          if (!isWeb)
-            SwitchListTile(
-              title: const Text('External Player'),
-              subtitle: const Text('Always open video in external player?'),
-              value: _enableExternalPlayer,
-              onChanged: (value) {
-                setState(() => _enableExternalPlayer = value);
-                _debouncedSave();
-              },
-            ),
-          if (_enableExternalPlayer &&
-              externalPlayers[currentPlatform]?.isNotEmpty == true)
-            ListTile(
-              title: const Text('Default Player'),
-              trailing: DropdownButton<String>(
-                value: _defaultPlayerId == "" ? null : _defaultPlayerId,
-                items: externalPlayers[currentPlatform]!
-                    .map(
-                      (item) => item.toDropdownMenuItem(),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _defaultPlayerId = value);
+                ),
+                ListTile(
+                  title: const Text('Subtitle Color'),
+                  trailing: GestureDetector(
+                    // Use GestureDetector to make the color display tappable
+                    onTap: () => _showColorPickerDialog(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _selectedSubtitleColor,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Font Size'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Slider(
+                        value: _subtitleSize,
+                        min: 10.0,
+                        max: 60.0,
+                        divisions: 18,
+                        label: '${_subtitleSize.toStringAsFixed(2)}x',
+                        onChanged: (value) {
+                          HapticFeedback.lightImpact();
+                          setState(
+                            () => _subtitleSize =
+                                double.parse(value.toStringAsFixed(2)),
+                          );
+                          _debouncedSave();
+                        },
+                      ),
+                      Text('Current: ${_subtitleSize.toStringAsFixed(2)}x'),
+                    ],
+                  ),
+                ),
+              ],
+              const Divider(),
+              if (!isWeb)
+                SwitchListTile(
+                  title: const Text('External Player'),
+                  subtitle: const Text('Always open video in external player?'),
+                  value: _enableExternalPlayer,
+                  onChanged: (value) {
+                    setState(() => _enableExternalPlayer = value);
                     _debouncedSave();
-                  }
-                },
-              ),
-            ),
-        ],
+                  },
+                ),
+              if (_enableExternalPlayer &&
+                  externalPlayers[currentPlatform]?.isNotEmpty == true)
+                ListTile(
+                  title: const Text('Default Player'),
+                  trailing: DropdownButton<String>(
+                    value: _defaultPlayerId == "" ? null : _defaultPlayerId,
+                    items: externalPlayers[currentPlatform]!
+                        .map(
+                          (item) => item.toDropdownMenuItem(),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _defaultPlayerId = value);
+                        _debouncedSave();
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

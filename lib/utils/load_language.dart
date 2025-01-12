@@ -55,6 +55,8 @@ class PlaybackConfig {
   final String? subtitleColor;
   @JsonKey(defaultValue: 11)
   final double subtitleSize;
+  @JsonKey(defaultValue: false)
+  final bool softwareAcceleration;
 
   PlaybackConfig({
     required this.autoPlay,
@@ -67,6 +69,7 @@ class PlaybackConfig {
     this.subtitleStyle,
     this.subtitleColor,
     required this.subtitleSize,
+    required this.softwareAcceleration,
   });
 
   String? get currentPlayerPackage {

@@ -109,8 +109,8 @@ class _VideoViewerState extends State<VideoViewer> {
 
   late final controller = VideoController(
     player,
-    configuration: const VideoControllerConfiguration(
-      enableHardwareAcceleration: true,
+    configuration: VideoControllerConfiguration(
+      enableHardwareAcceleration: !config.softwareAcceleration,
     ),
   );
 
