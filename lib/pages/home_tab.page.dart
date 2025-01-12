@@ -184,6 +184,8 @@ class _HomeTabPageState extends State<HomeTabPage> {
               );
             }
 
+            final mediaQuery = MediaQuery.of(context).size.width;
+
             return Padding(
               padding: const EdgeInsets.symmetric(
                 vertical: 8.0,
@@ -196,6 +198,8 @@ class _HomeTabPageState extends State<HomeTabPage> {
 
                     return TraktContainer(
                       key: _getKey(index),
+                      itemsPerPage:
+                          (mediaQuery / getItemWidth(context)).toInt() + 1,
                       loadId: category,
                     );
                   }

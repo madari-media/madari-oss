@@ -10,9 +10,12 @@ import '../../settings/screen/trakt_integration_screen.dart';
 
 class TraktContainer extends StatefulWidget {
   final String loadId;
+  final int itemsPerPage;
+
   const TraktContainer({
     super.key,
     required this.loadId,
+    this.itemsPerPage = 5,
   });
 
   @override
@@ -27,8 +30,6 @@ class TraktContainerState extends State<TraktContainer> {
   String? _error;
 
   int _currentPage = 1;
-
-  static const _itemsPerPage = 5;
 
   final _scrollController = ScrollController();
 
@@ -96,38 +97,38 @@ class TraktContainerState extends State<TraktContainer> {
           newItems = await TraktService.instance!
               .getUpNextSeries(
                 page: page,
-                itemsPerPage: _itemsPerPage,
+                itemsPerPage: widget.itemsPerPage,
               )
               .first;
           break;
         case "continue_watching":
           newItems = await TraktService.instance!.getContinueWatching(
             page: page,
-            itemsPerPage: _itemsPerPage,
+            itemsPerPage: widget.itemsPerPage,
           );
           break;
         case "upcoming_schedule":
           newItems = await TraktService.instance!.getUpcomingSchedule(
             page: page,
-            itemsPerPage: _itemsPerPage,
+            itemsPerPage: widget.itemsPerPage,
           );
           break;
         case "watchlist":
           newItems = await TraktService.instance!.getWatchlist(
             page: page,
-            itemsPerPage: _itemsPerPage,
+            itemsPerPage: widget.itemsPerPage,
           );
           break;
         case "show_recommendations":
           newItems = await TraktService.instance!.getShowRecommendations(
             page: page,
-            itemsPerPage: _itemsPerPage,
+            itemsPerPage: widget.itemsPerPage,
           );
           break;
         case "movie_recommendations":
           newItems = await TraktService.instance!.getMovieRecommendations(
             page: page,
-            itemsPerPage: _itemsPerPage,
+            itemsPerPage: widget.itemsPerPage,
           );
           break;
         default:
