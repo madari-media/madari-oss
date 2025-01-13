@@ -120,7 +120,6 @@ class TraktService {
 
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
-        'Accept-Content': 'application/json',
         'trakt-api-version': _apiVersion,
         'trakt-api-key': _traktClient,
         'Authorization': 'Bearer $_token',
