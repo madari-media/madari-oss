@@ -15,6 +15,7 @@ import '../../../engine/engine.dart';
 import '../../connections/service/base_connection_service.dart';
 import '../../connections/types/stremio/stremio_base.types.dart';
 import '../../settings/types/connection.dart';
+import '../types/common.dart';
 
 class TraktService {
   static final Logger _logger = Logger('TraktService');
@@ -1032,5 +1033,82 @@ class TraktService {
     }
 
     return meta;
+  }
+  Future<List<TraktShowWatched>> getWatchedShowsWithEpisodes(Meta meta) async {
+    if (!isEnabled()) {
+      _logger.info('Trakt integration is not enabled');
+      return [];
+    }
+    if (meta.type == "series" ) {
+      final watchedShows = await getWatchedShows();
+      for (final show in watchedShows) {
+        if(show.ids.imdb==meta.imdbId) {
+          // await Future.delayed(const Duration(seconds: 5));
+          show.episodes = await _getWatchedEpisodes(show.ids.trakt);
+        }
+      }
+      return watchedShows;
+    }
+    return [];
+  }
+  Future<List<TraktShowWatched>> getWatchedShows() async {
+    if (!isEnabled()) {
+      _logger.info('Trakt integration is not enabled');
+      return [];
+    }
+    try {
+      final body = await _makeRequest(
+        "$_baseUrl/sync/watched/shows/",
+        bypassCache: true,
+      );
+      final List<TraktShowWatched> result = [];
+      for (final item in body) {
+        try {
+          result.add(
+            TraktShowWatched(
+              title: item["show"]["title"],
+              seasons: item["seasons"],
+              ids: TraktIds.fromJson(item["show"]["ids"]),
+              lastWatchedAt: item["last_watched_at"] != null ? DateTime.parse(item["last_watched_at"]) : null,
+              plays: item["plays"],
+            ),
+          );
+
+        } catch (e, stack) {
+          _logger.warning('Error parsing watched show: $e\n$stack item: $item');
+        }
+      }
+      return result;
+    } catch (e, stack) {
+      _logger.severe('Error fetching watched shows: $e\n$stack');
+      return [];
+    }
+  }
+  Future<List<TraktEpisodeWatched>> _getWatchedEpisodes(int? traktId) async {
+    if (traktId == null) return [];
+    int page = 1;
+    const int limit = 1000;
+    try {
+      final body = await _makeRequest(
+        "$_baseUrl/sync/history/shows/$traktId?page=$page&limit=$limit",
+        bypassCache: true,
+      );
+      final List<TraktEpisodeWatched> episodes = [];
+      for (final item in body) {
+        if (item['episode'] != null) {
+          episodes.add(
+            TraktEpisodeWatched(
+              season: item['episode']['season'],
+              episode: item['episode']['number'],
+              watchedAt: DateTime.parse(item['watched_at']),
+            ),
+          );
+        }
+      }
+      return episodes;
+    } catch (e, stack) {
+      _logger.severe('Error fetching watched episodes: $e\n$stack');
+      return [];
+    }
   }
 }

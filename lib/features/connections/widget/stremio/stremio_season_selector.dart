@@ -41,6 +41,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
   late Meta meta = widget.meta;
 
   final Map<String, double> _progress = {};
+  Map<int, Set<int>> watchedEpisodesBySeason = {};
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     });
 
     getWatchHistory();
+     getWatchedHistory();
   }
 
   int getSelectedSeason() {
@@ -73,6 +75,52 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
         })?.season ??
         widget.season ??
         0;
+  }
+  getWatchedHistory() async {
+    final traktService = TraktService.instance;
+    try {
+
+      final result = await traktService!.getWatchedShowsWithEpisodes(widget.meta);
+      watchedEpisodesBySeason.clear();
+      print("Trakt Result: $result"); // Print the raw Trakt result
+
+      for (final show in result) {
+        print("Show Title: ${show.title}"); // Print the show title
+        if (show.episodes != null) {
+          print("Episodes for ${show.title}:");
+          for (final episode in show.episodes!) {
+            print("  - Season: ${episode.season}, Episode: ${episode.episode}, Watched At: ${episode.watchedAt}");
+            if (!watchedEpisodesBySeason.containsKey(episode.season)) {
+              watchedEpisodesBySeason[episode.season] = {};
+            }
+            watchedEpisodesBySeason[episode.season]!.add(episode.episode);
+          }
+        } else {
+          print("No episodes found for ${show.title}");
+        }
+      }
+
+      print("Watched Episodes By Season: $watchedEpisodesBySeason"); // Print the final map
+      setState(() {});
+      return;
+
+    } catch (e, stack) {
+      print("Error fetching Trakt data: $e");
+      print("Stack Trace: $stack");
+    }
+  }
+  bool isEpisodeWatched(int season, int episode) {
+    return watchedEpisodesBySeason.containsKey(season) &&
+        watchedEpisodesBySeason[season]!.contains(episode);
+  }
+  bool isSeasonWatched(int season) {
+    if (!watchedEpisodesBySeason.containsKey(season)) {
+      return false; // No episodes watched in this season
+    }
+    if (seasonMap.containsKey(season)) {
+      return watchedEpisodesBySeason[season]!.length == seasonMap[season]!.length;
+    }
+    return false;
   }
 
   getWatchHistory() async {
@@ -245,9 +293,14 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                     splashBorderRadius: BorderRadius.circular(8),
                     padding: const EdgeInsets.all(4),
                     tabs: seasons.map((season) {
+                      final isWatched = isSeasonWatched(season);
                       return Tab(
-                        text: season == 0 ? "Specials" : 'Season $season',
-                        height: 40,
+                           child: Text(
+                          season == 0 ? "Specials" : 'Season $season',
+                          style: TextStyle(
+                          color: isWatched? Colors.green : Colors.white,
+                      ),
+                          ),
                       );
                     }).toList(),
                   ),
@@ -354,7 +407,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                                   ],
                                 ),
                               ),
-                              if (progress > .9)
+                              if (isEpisodeWatched(currentSeason, episode.episode!))
                                 Positioned(
                                   bottom: 0,
                                   right: 0,
