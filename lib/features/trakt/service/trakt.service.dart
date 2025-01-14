@@ -304,8 +304,14 @@ class TraktService {
         '$_baseUrl/sync/watched/shows',
       );
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      if (watchedShows.isEmpty) {
+        return;
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, watchedShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, watchedShows.length - 1);
 
       final items = watchedShows.toList();
 
@@ -459,11 +465,17 @@ class TraktService {
       final List<dynamic> continueWatching =
           await _makeRequest('$_baseUrl/sync/playback');
 
+      if (continueWatching.isEmpty) {
+        return [];
+      }
+
       continueWatching.sort((v2, v1) => DateTime.parse(v1["paused_at"])
           .compareTo(DateTime.parse(v2["paused_at"])));
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, continueWatching.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, continueWatching.length - 1);
 
       if (startIndex >= continueWatching.length) {
         return [];
@@ -541,8 +553,14 @@ class TraktService {
         '$_baseUrl/calendars/my/shows/${DateFormat('yyyy-MM-dd').format(DateTime.now())}/7',
       );
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      if (scheduleShows.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, scheduleShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, scheduleShows.length - 1);
 
       if (startIndex >= scheduleShows.length) {
         return [];
@@ -602,8 +620,14 @@ class TraktService {
           await _makeRequest('$_baseUrl/sync/watchlist');
       _logger.info('Got watchlist');
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      if (watchlistItems.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, watchlistItems.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, watchlistItems.length - 1);
 
       if (startIndex >= watchlistItems.length) {
         return [];
@@ -666,8 +690,14 @@ class TraktService {
         '$_baseUrl/recommendations/shows',
       );
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      if (recommendedShows.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, recommendedShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, recommendedShows.length - 1);
 
       if (startIndex >= recommendedShows.length) {
         return [];
@@ -717,8 +747,14 @@ class TraktService {
         '$_baseUrl/recommendations/movies',
       );
 
-      final startIndex = (page - 1) * itemsPerPage;
-      final endIndex = startIndex + itemsPerPage;
+      if (recommendedMovies.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, recommendedMovies.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, recommendedMovies.length - 1);
 
       if (startIndex >= recommendedMovies.length) {
         return [];
