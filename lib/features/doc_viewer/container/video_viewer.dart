@@ -59,6 +59,8 @@ class _VideoViewerState extends State<VideoViewer> {
   Future<types.Meta>? traktProgress;
 
   Future<void> saveWatchHistory() async {
+    _logger.info('Starting to save watch history...');
+
     final duration = player.state.duration.inSeconds;
 
     if (duration <= 30) {
@@ -68,7 +70,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
     if (gotFromTraktDuration == false) {
       _logger.info(
-        "did not start the scrobbing because initially time is not retrieved from the api",
+        "Did not start the scrobbling because initially time is not retrieved from the API.",
       );
       return;
     }
@@ -113,6 +115,8 @@ class _VideoViewerState extends State<VideoViewer> {
         season: _source.season,
       ),
     );
+
+    _logger.info('Watch history saved successfully.');
   }
 
   late final controller = VideoController(
@@ -128,26 +132,36 @@ class _VideoViewerState extends State<VideoViewer> {
 
   int? traktId;
 
-  Future<void> setDurationFromTrakt() async {
+  Future<void> setDurationFromTrakt({
+    Future<types.Meta>? traktProgress,
+  }) async {
+    _logger.info('Setting duration from Trakt...');
+
     try {
       if (player.state.duration.inSeconds < 2) {
+        _logger.info('Duration is too short to set from Trakt.');
         return;
       }
 
       if (gotFromTraktDuration) {
+        _logger.info('Duration already set from Trakt.');
         return;
       }
 
       gotFromTraktDuration = true;
 
-      if (!TraktService.isEnabled() || traktProgress == null) {
+      if (!TraktService.isEnabled() ||
+          (traktProgress ?? this.traktProgress) == null) {
+        _logger.info(
+            'Trakt service is not enabled or progress is null. Playing video.');
         player.play();
         return;
       }
 
-      final progress = await traktProgress;
+      final progress = await (traktProgress ?? this.traktProgress);
 
       if (this.meta is! types.Meta) {
+        _logger.info('Meta is not of type types.Meta.');
         return;
       }
 
@@ -161,11 +175,14 @@ class _VideoViewerState extends State<VideoViewer> {
       );
 
       if (duration.inSeconds > 10) {
+        _logger.info('Seeking to duration: $duration');
         await player.seek(duration);
       }
 
       await player.play();
+      _logger.info('Video started playing.');
     } catch (e) {
+      _logger.severe('Error setting duration from Trakt: $e');
       await player.play();
     }
   }
@@ -175,24 +192,43 @@ class _VideoViewerState extends State<VideoViewer> {
   PlaybackConfig config = getPlaybackConfig();
 
   Future setupVideoThings() async {
+    _logger.info('Setting up video things...');
+
+    traktProgress = null;
+    traktProgress = TraktService.instance!.getProgress(
+      meta as types.Meta,
+      bypassCache: true,
+    );
+
     _duration = player.stream.duration.listen((item) async {
+      if (meta is types.Meta) {
+        setDurationFromTrakt(traktProgress: traktProgress);
+      }
+
       if (item.inSeconds != 0) {
+        _logger.info('Duration updated: $item');
         await saveWatchHistory();
       }
     });
 
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _logger.info('Periodic save watch history triggered.');
       saveWatchHistory();
     });
 
     _streamListen = player.stream.playing.listen((playing) {
+      _logger.info('Playing state changed: $playing');
       saveWatchHistory();
     });
+
+    _logger.info('Loading file...');
 
     return loadFile();
   }
 
   destroyVideoThing() async {
+    _logger.info('Destroying video things...');
+
     timeLoaded = false;
     gotFromTraktDuration = false;
     traktProgress = null;
@@ -200,11 +236,13 @@ class _VideoViewerState extends State<VideoViewer> {
     for (final item in listener) {
       item.cancel();
     }
+    listener = [];
     _timer?.cancel();
     _streamListen?.cancel();
     _duration?.cancel();
 
     if (meta is types.Meta && player.state.duration.inSeconds > 30) {
+      _logger.info('Stopping scrobbling and clearing cache...');
       await TraktService.instance!.stopScrobbling(
         meta: meta as types.Meta,
         progress: currentProgressInPercentage,
@@ -212,11 +250,14 @@ class _VideoViewerState extends State<VideoViewer> {
         traktId: traktId,
       );
     }
+
+    _logger.info('Video things destroyed.');
   }
 
   GlobalKey videoKey = GlobalKey();
 
   generateNewKey() {
+    _logger.info('Generating new key...');
     videoKey = GlobalKey();
 
     setState(() {});
@@ -225,6 +266,8 @@ class _VideoViewerState extends State<VideoViewer> {
   @override
   void initState() {
     super.initState();
+    _logger.info('Initializing VideoViewer...');
+
     _source = widget.source;
 
     SystemChrome.setEnabledSystemUIMode(
@@ -234,6 +277,7 @@ class _VideoViewerState extends State<VideoViewer> {
 
     if (player.platform is NativePlayer && !kIsWeb) {
       Future.microtask(() async {
+        _logger.info('Setting network timeout...');
         await (player.platform as dynamic).setProperty('network-timeout', '60');
       });
     }
@@ -242,17 +286,17 @@ class _VideoViewerState extends State<VideoViewer> {
       _source,
       widget.meta!,
     );
+
+    _logger.info('VideoViewer initialized.');
   }
 
   Future<void> loadFile() async {
+    _logger.info('Loading file...');
+
     Duration duration = const Duration(seconds: 0);
 
     if (meta is types.Meta && TraktService.isEnabled()) {
       _logger.info("Playing video ${(meta as types.Meta).selectedVideoIndex}");
-
-      traktProgress = TraktService.instance!.getProgress(
-        meta as types.Meta,
-      );
     } else {
       final item = await zeeeWatchHistory!.getItemWatchHistory(
         ids: [
@@ -279,6 +323,7 @@ class _VideoViewerState extends State<VideoViewer> {
     switch (_source.runtimeType) {
       case const (FileSource):
         if (kIsWeb) {
+          _logger.info('FileSource is not supported on web.');
           return;
         }
         player.open(
@@ -300,10 +345,12 @@ class _VideoViewerState extends State<VideoViewer> {
           play: false,
         );
     }
+
+    _logger.info('File loaded successfully.');
   }
 
-  late StreamSubscription<bool>? _streamListen;
-  late StreamSubscription<dynamic>? _duration;
+  StreamSubscription<bool>? _streamListen;
+  StreamSubscription<dynamic>? _duration;
 
   @override
   void dispose() {
@@ -315,27 +362,34 @@ class _VideoViewerState extends State<VideoViewer> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [],
     );
+
     destroyVideoThing();
     player.dispose();
+
     super.dispose();
+
+    _logger.info('VideoViewer disposed.');
   }
 
   onVideoChange(DocSource source, LibraryItem item) async {
-    _source = source;
-    meta = item;
-
     setState(() {});
     await destroyVideoThing();
+
+    _logger.info('Changing video source...');
+
+    _source = source;
+    meta = item;
     setState(() {});
-    traktProgress = null;
     await setupVideoThings();
-    await setDurationFromTrakt();
     setState(() {});
     generateNewKey();
+
+    _logger.info('Video source changed successfully.');
   }
 
   @override

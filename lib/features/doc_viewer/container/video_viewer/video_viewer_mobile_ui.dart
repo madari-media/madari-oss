@@ -102,7 +102,7 @@ class _VideoViewerMobileState extends State<VideoViewerMobile> {
         key: widget.videoKey,
         onExitFullscreen: () async {
           await defaultExitNativeFullscreen();
-          if (context.mounted) Navigator.of(context).pop();
+          Navigator.of(context).pop();
         },
         controller: widget.controller,
         controls: MaterialVideoControls,
@@ -126,7 +126,14 @@ class _VideoViewerMobileState extends State<VideoViewerMobile> {
       topButtonBar: [
         MaterialCustomButton(
           onPressed: () {
-            Navigator.of(context).pop();
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pop();
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pop();
           },
           icon: const Icon(
             Icons.arrow_back,

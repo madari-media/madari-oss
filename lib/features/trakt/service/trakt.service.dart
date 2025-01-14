@@ -992,6 +992,8 @@ class TraktService {
             continue;
           }
 
+          meta.videos = meta.videos ?? [];
+
           final result = meta.videos?.firstWhereOrNull((video) {
             if (video.tvdbId != null &&
                 item['episode']['ids']['tvdb'] != null) {
@@ -1009,6 +1011,10 @@ class TraktService {
           final videoIndex = meta.videos!.indexOf(result);
 
           meta.videos![videoIndex].progress = item['progress'];
+
+          _logger.info(
+            "Setting progress for ${meta.videos![videoIndex].name} to ${item['progress']}",
+          );
         }
         return meta;
       } else {

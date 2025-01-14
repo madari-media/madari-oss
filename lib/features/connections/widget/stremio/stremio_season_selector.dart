@@ -52,10 +52,15 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
       return;
     }
 
+    final index = getSelectedSeason();
+
     _tabController = TabController(
       length: seasonMap.keys.length,
       vsync: this,
-      initialIndex: getSelectedSeason(),
+      initialIndex: index.clamp(
+        0,
+        seasonMap.keys.isNotEmpty ? seasonMap.keys.length - 1 : 0,
+      ),
     );
 
     // This is for rendering the component again for the selection of another tab
