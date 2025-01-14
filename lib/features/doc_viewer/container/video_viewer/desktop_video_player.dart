@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:madari_client/features/connections/service/base_connection_service.dart';
+import 'package:madari_client/features/doc_viewer/container/video_viewer/season_source.dart';
 import 'package:madari_client/features/doc_viewer/container/video_viewer/torrent_stat.dart';
 import 'package:madari_client/features/doc_viewer/types/doc_source.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
+
+import '../../../connections/types/stremio/stremio_base.types.dart';
 
 MaterialDesktopVideoControlsThemeData getDesktopControls(
   BuildContext context, {
@@ -16,6 +20,8 @@ MaterialDesktopVideoControlsThemeData getDesktopControls(
   Widget? library,
   required Function() onSubtitleSelect,
   required Function() onAudioSelect,
+  LibraryItem? meta,
+  required Function(int index) onVideoChange,
 }) {
   return MaterialDesktopVideoControlsThemeData(
     toggleFullscreenOnDoublePress: true,
@@ -34,14 +40,25 @@ MaterialDesktopVideoControlsThemeData getDesktopControls(
           child: SizedBox(
             width: MediaQuery.of(context).size.width - 120,
             child: Text(
-              source.title.endsWith(".mp4")
-                  ? source.title.substring(0, source.title.length - 4)
-                  : source.title,
+              (meta is Meta && meta.currentVideo != null)
+                  ? "${meta.name ?? ""}  S${meta.currentVideo?.season} E${meta.currentVideo?.episode}"
+                  : source.title.endsWith(".mp4")
+                      ? source.title.substring(0, source.title.length - 4)
+                      : source.title,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
         ),
       ),
+      const Spacer(),
+      if (meta is Meta)
+        if (meta.type == "series")
+          SeasonSource(
+            meta: meta,
+            isMobile: false,
+            player: player,
+            onVideoChange: onVideoChange,
+          ),
     ],
     bufferingIndicatorBuilder: source is TorrentSource
         ? (ctx) {

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,6 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../utils/load_language.dart';
 import '../../connections/types/stremio/stremio_base.types.dart' as types;
-import '../../connections/widget/stremio/stremio_season_selector.dart';
 import '../../trakt/service/trakt.service.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
@@ -39,6 +37,8 @@ class VideoViewer extends StatefulWidget {
 }
 
 class _VideoViewerState extends State<VideoViewer> {
+  late LibraryItem? meta = widget.meta;
+
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
   Timer? _timer;
   late final Player player = Player(
@@ -81,18 +81,18 @@ class _VideoViewerState extends State<VideoViewer> {
       return;
     }
 
-    if (widget.meta is types.Meta && TraktService.instance != null) {
+    if (meta is types.Meta && TraktService.instance != null) {
       try {
         if (player.state.playing) {
           _logger.info('Starting scrobbling...');
           await TraktService.instance!.startScrobbling(
-            meta: widget.meta as types.Meta,
+            meta: meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         } else {
           _logger.info('Stopping scrobbling...');
           await TraktService.instance!.stopScrobbling(
-            meta: widget.meta as types.Meta,
+            meta: meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         }
@@ -147,11 +147,11 @@ class _VideoViewerState extends State<VideoViewer> {
 
       final progress = await traktProgress;
 
-      if (widget.meta is! types.Meta) {
+      if (this.meta is! types.Meta) {
         return;
       }
 
-      final meta = (progress ?? widget.meta) as types.Meta;
+      final meta = (progress ?? this.meta) as types.Meta;
 
       final duration = Duration(
         seconds: calculateSecondsFromProgress(
@@ -174,6 +174,54 @@ class _VideoViewerState extends State<VideoViewer> {
 
   PlaybackConfig config = getPlaybackConfig();
 
+  Future setupVideoThings() async {
+    _duration = player.stream.duration.listen((item) async {
+      if (item.inSeconds != 0) {
+        await saveWatchHistory();
+      }
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      saveWatchHistory();
+    });
+
+    _streamListen = player.stream.playing.listen((playing) {
+      saveWatchHistory();
+    });
+
+    return loadFile();
+  }
+
+  destroyVideoThing() async {
+    timeLoaded = false;
+    gotFromTraktDuration = false;
+    traktProgress = null;
+
+    for (final item in listener) {
+      item.cancel();
+    }
+    _timer?.cancel();
+    _streamListen?.cancel();
+    _duration?.cancel();
+
+    if (meta is types.Meta && player.state.duration.inSeconds > 30) {
+      await TraktService.instance!.stopScrobbling(
+        meta: meta as types.Meta,
+        progress: currentProgressInPercentage,
+        shouldClearCache: true,
+        traktId: traktId,
+      );
+    }
+  }
+
+  GlobalKey videoKey = GlobalKey();
+
+  generateNewKey() {
+    videoKey = GlobalKey();
+
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -184,57 +232,49 @@ class _VideoViewerState extends State<VideoViewer> {
       overlays: [],
     );
 
-    _duration = player.stream.duration.listen((item) async {
-      if (item.inSeconds != 0) {
-        await setDurationFromTrakt();
-        await saveWatchHistory();
-      }
-    });
-
-    loadFile();
-
     if (player.platform is NativePlayer && !kIsWeb) {
       Future.microtask(() async {
         await (player.platform as dynamic).setProperty('network-timeout', '60');
       });
     }
 
-    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      saveWatchHistory();
-    });
-
-    _streamListen = player.stream.playing.listen((playing) {
-      saveWatchHistory();
-    });
-
-    if (widget.meta is types.Meta && TraktService.isEnabled()) {
-      traktProgress = TraktService.instance!.getProgress(
-        widget.meta as types.Meta,
-      );
-    }
+    onVideoChange(
+      _source,
+      widget.meta!,
+    );
   }
 
-  loadFile() async {
+  Future<void> loadFile() async {
+    Duration duration = const Duration(seconds: 0);
+
+    if (meta is types.Meta && TraktService.isEnabled()) {
+      _logger.info("Playing video ${(meta as types.Meta).selectedVideoIndex}");
+
+      traktProgress = TraktService.instance!.getProgress(
+        meta as types.Meta,
+      );
+    } else {
+      final item = await zeeeWatchHistory!.getItemWatchHistory(
+        ids: [
+          WatchHistoryGetRequest(
+            id: _source.id,
+            season: _source.season,
+            episode: _source.episode,
+          ),
+        ],
+      );
+
+      duration = Duration(
+        seconds: item.isEmpty
+            ? 0
+            : calculateSecondsFromProgress(
+                item.first.duration,
+                item.first.progress.toDouble(),
+              ),
+      );
+    }
+
     _logger.info('Loading file for source: ${_source.id}');
-
-    final item = await zeeeWatchHistory!.getItemWatchHistory(
-      ids: [
-        WatchHistoryGetRequest(
-          id: _source.id,
-          season: _source.season,
-          episode: _source.episode,
-        ),
-      ],
-    );
-
-    final duration = Duration(
-      seconds: item.isEmpty
-          ? 0
-          : calculateSecondsFromProgress(
-              item.first.duration,
-              item.first.progress.toDouble(),
-            ),
-    );
 
     switch (_source.runtimeType) {
       case const (FileSource):
@@ -262,41 +302,8 @@ class _VideoViewerState extends State<VideoViewer> {
     }
   }
 
-  late StreamSubscription<bool> _streamListen;
-  late StreamSubscription<dynamic> _duration;
-
-  onLibrarySelect() async {
-    _logger.info('Library selection triggered.');
-
-    controller.player.pause();
-
-    final result = await showCupertinoDialog(
-      context: context,
-      builder: (context) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text("Seasons"),
-          ),
-          body: CustomScrollView(
-            slivers: [
-              StremioItemSeasonSelector(
-                service: widget.service,
-                meta: widget.meta as types.Meta,
-                shouldPop: true,
-                season: int.tryParse(widget.currentSeason!),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (result is MediaURLSource) {
-      _source = result;
-
-      loadFile();
-    }
-  }
+  late StreamSubscription<bool>? _streamListen;
+  late StreamSubscription<dynamic>? _duration;
 
   @override
   void dispose() {
@@ -308,43 +315,42 @@ class _VideoViewerState extends State<VideoViewer> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    for (final item in listener) {
-      item.cancel();
-    }
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [],
     );
-    _timer?.cancel();
-    _streamListen.cancel();
-    _duration.cancel();
-
-    if (widget.meta is types.Meta && player.state.duration.inSeconds > 30) {
-      TraktService.instance!.stopScrobbling(
-        meta: widget.meta as types.Meta,
-        progress: currentProgressInPercentage,
-        shouldClearCache: true,
-        traktId: traktId,
-      );
-    }
-
+    destroyVideoThing();
     player.dispose();
-
     super.dispose();
+  }
+
+  onVideoChange(DocSource source, LibraryItem item) async {
+    _source = source;
+    meta = item;
+
+    setState(() {});
+    await destroyVideoThing();
+    setState(() {});
+    traktProgress = null;
+    await setupVideoThings();
+    await setDurationFromTrakt();
+    setState(() {});
+    generateNewKey();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: VideoViewerUi(
+        key: videoKey,
         controller: controller,
         player: player,
         config: config,
         source: _source,
-        onLibrarySelect: onLibrarySelect,
-        title: _source.title,
+        onLibrarySelect: () {},
         service: widget.service,
-        meta: widget.meta,
+        meta: meta,
+        onSourceChange: (source, meta) => onVideoChange(source, meta),
       ),
     );
   }

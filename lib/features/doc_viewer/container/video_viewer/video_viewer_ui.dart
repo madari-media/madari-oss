@@ -15,6 +15,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../../utils/tv_detector.dart';
+import '../../../connections/types/stremio/stremio_base.types.dart' as types;
 import '../../../connections/widget/base/render_stream_list.dart';
 import 'desktop_video_player.dart';
 
@@ -24,9 +25,12 @@ class VideoViewerUi extends StatefulWidget {
   final PlaybackConfig config;
   final DocSource source;
   final VoidCallback onLibrarySelect;
-  final String title;
   final BaseConnectionService? service;
   final LibraryItem? meta;
+  final Function(
+    DocSource source,
+    LibraryItem item,
+  ) onSourceChange;
 
   const VideoViewerUi({
     super.key,
@@ -35,9 +39,9 @@ class VideoViewerUi extends StatefulWidget {
     required this.config,
     required this.source,
     required this.onLibrarySelect,
-    required this.title,
     required this.service,
     this.meta,
+    required this.onSourceChange,
   });
 
   @override
@@ -132,6 +136,13 @@ class _VideoViewerUiState extends State<VideoViewerUi> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    print(widget.meta.toString());
+  }
+
+  @override
   void dispose() {
     super.dispose();
 
@@ -171,6 +182,41 @@ class _VideoViewerUiState extends State<VideoViewerUi> {
           onAudioSelect: onAudioSelect,
           config: widget.config,
           videoKey: key,
+          meta: widget.meta,
+          onVideoChange: (index) async {
+            Navigator.of(context).pop();
+
+            widget.player.pause();
+
+            final result = await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height,
+              ),
+              builder: (context) {
+                return Scaffold(
+                  appBar: AppBar(),
+                  body: RenderStreamList(
+                    service: widget.service!,
+                    id: (widget.meta as types.Meta).copyWith(
+                      selectedVideoIndex: index,
+                    ),
+                    shouldPop: true,
+                  ),
+                );
+              },
+            );
+
+            if (result != null) {
+              widget.onSourceChange(
+                result,
+                (widget.meta as types.Meta).copyWith(
+                  selectedVideoIndex: index,
+                ),
+              );
+            }
+          },
         );
       default:
         return _buildDesktop(context);
@@ -184,6 +230,41 @@ class _VideoViewerUiState extends State<VideoViewerUi> {
       source: widget.source,
       onAudioSelect: onAudioSelect,
       onSubtitleSelect: onSubtitleSelect,
+      meta: widget.meta,
+      onVideoChange: (index) async {
+        Navigator.of(context).pop();
+
+        widget.player.pause();
+
+        final result = await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height,
+          ),
+          builder: (context) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: RenderStreamList(
+                service: widget.service!,
+                id: (widget.meta as types.Meta).copyWith(
+                  selectedVideoIndex: index,
+                ),
+                shouldPop: true,
+              ),
+            );
+          },
+        );
+
+        if (result != null) {
+          widget.onSourceChange(
+            result,
+            (widget.meta as types.Meta).copyWith(
+              selectedVideoIndex: index,
+            ),
+          );
+        }
+      },
     );
 
     return MaterialDesktopVideoControlsTheme(

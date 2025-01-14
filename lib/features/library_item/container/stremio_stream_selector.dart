@@ -246,8 +246,10 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
                     url: url,
                     title: widget.item.name!,
                     id: widget.item.id,
-                    season: widget.season,
-                    episode: widget.episode,
+                    season: widget.item.currentVideo?.season.toString() ??
+                        widget.season,
+                    episode: widget.item.currentVideo?.episode.toString() ??
+                        widget.episode,
                   );
                 }
 
@@ -258,8 +260,10 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
                     infoHash: item.infoHash!,
                     fileName:
                         "${item.behaviorHints?["filename"] as String}.mp4",
-                    season: widget.season,
-                    episode: widget.episode,
+                    season: widget.item.currentVideo?.season.toString() ??
+                        widget.season,
+                    episode: widget.item.currentVideo?.episode.toString() ??
+                        widget.episode,
                   );
                 }
 
@@ -271,8 +275,10 @@ class _StremioStreamSelectorState extends State<StremioStreamSelector> {
                     url: item.url!,
                     id: widget.item.id,
                     fileName: "${_getFileName(item)}.mp4",
-                    season: widget.season,
-                    episode: widget.episode,
+                    season: widget.item.currentVideo?.season.toString() ??
+                        widget.season,
+                    episode: widget.item.currentVideo?.episode.toString() ??
+                        widget.episode,
                   );
                 }
 

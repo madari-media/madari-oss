@@ -459,6 +459,9 @@ class TraktService {
       final List<dynamic> continueWatching =
           await _makeRequest('$_baseUrl/sync/playback');
 
+      continueWatching.sort((v2, v1) => DateTime.parse(v1["paused_at"])
+          .compareTo(DateTime.parse(v2["paused_at"])));
+
       final startIndex = (page - 1) * itemsPerPage;
       final endIndex = startIndex + itemsPerPage;
 
