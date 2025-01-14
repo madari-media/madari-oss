@@ -50,7 +50,8 @@ class _StremioCardState extends State<StremioCard> {
               },
             );
           },
-          child: (meta.nextSeason == null || meta.progress != null)
+          child: ((meta.currentVideo == null || meta.progress != null) ||
+                  (meta.forceRegular == true))
               ? _buildRegular(context, meta)
               : _buildWideCard(context, meta),
         ),
@@ -144,14 +145,15 @@ class _StremioCardState extends State<StremioCard> {
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      "S${meta.currentVideo?.season ?? meta.nextSeason} E${meta.currentVideo?.episode ?? meta.nextEpisode}",
+                      "S${meta.currentVideo?.season} E${meta.currentVideo?.episode}",
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Colors.black,
                           ),
                     ),
                   ),
                   Text(
-                    "${meta.nextEpisodeTitle}".trim(),
+                    "${meta.currentVideo?.name ?? meta.currentVideo?.title}"
+                        .trim(),
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ],
@@ -245,15 +247,8 @@ class _StremioCardState extends State<StremioCard> {
   String? getBackgroundImage(Meta meta) {
     String? backgroundImage;
 
-    if (meta.nextEpisode != null &&
-        meta.nextSeason != null &&
-        meta.videos != null) {
-      for (final video in meta.videos!) {
-        if (video.season == meta.nextSeason &&
-            video.episode == meta.nextEpisode) {
-          return video.thumbnail ?? meta.poster;
-        }
-      }
+    if (meta.currentVideo != null) {
+      return meta.currentVideo?.thumbnail ?? meta.poster;
     }
 
     if (meta.poster != null) {
@@ -374,7 +369,7 @@ class _StremioCardState extends State<StremioCard> {
                       minHeight: 5,
                     ),
                   ),
-                if (meta.nextEpisode != null && meta.nextSeason != null)
+                if (meta.currentVideo != null)
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -407,7 +402,7 @@ class _StremioCardState extends State<StremioCard> {
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              "S${meta.currentVideo?.season ?? meta.nextSeason} E${meta.currentVideo?.episode ?? meta.nextEpisode}",
+                              "S${meta.currentVideo?.season} E${meta.currentVideo?.episode}",
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium

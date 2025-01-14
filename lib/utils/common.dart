@@ -8,3 +8,16 @@ extension FirstWhereOrNullExtension<T> on Iterable<T> {
     return null;
   }
 }
+
+extension LastWhereOrNullExtension<T> on Iterable<T> {
+  T? lastWhereOrNull(bool Function(T) test) {
+    T? elementItem;
+
+    for (var element in this) {
+      if (test(element)) {
+        elementItem = element;
+      }
+    }
+    return elementItem;
+  }
+}

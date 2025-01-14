@@ -66,7 +66,7 @@ class _StremioItemPageState extends State<StremioItemPage> {
   void initState() {
     super.initState();
 
-    if (widget.meta?.progress != null || widget.meta?.nextEpisode != null) {
+    if (widget.meta?.currentVideo != null) {
       openVideo();
     }
   }
@@ -78,11 +78,6 @@ class _StremioItemPageState extends State<StremioItemPage> {
       );
 
       if (mounted) {
-        final videoEpisode =
-            widget.meta?.currentVideo?.episode ?? widget.meta?.nextEpisode;
-        final videoSeason =
-            widget.meta?.currentVideo?.season ?? widget.meta?.nextSeason;
-
         showModalBottomSheet(
           context: context,
           builder: (context) {
@@ -95,7 +90,7 @@ class _StremioItemPageState extends State<StremioItemPage> {
                   icon: const Icon(Icons.close),
                 ),
                 title: Text(
-                  "Streams  ${videoSeason != null ? "S$videoSeason" : ""} ${videoEpisode != null ? " E$videoEpisode" : ""}"
+                  "Streams S${widget.meta?.currentVideo?.season ?? 0} E${widget.meta?.currentVideo?.episode ?? 0}"
                       .trim(),
                 ),
               ),
@@ -108,8 +103,6 @@ class _StremioItemPageState extends State<StremioItemPage> {
                         : null,
                     service: widget.service!,
                     id: widget.meta as LibraryItem,
-                    season: videoSeason?.toString(),
-                    episode: videoEpisode?.toString(),
                     shouldPop: false,
                   ),
                 ),
@@ -161,7 +154,8 @@ class _StremioItemPageState extends State<StremioItemPage> {
 
         return StremioItemViewer(
           hero: widget.hero,
-          meta: meta ?? widget.meta,
+          meta: (meta ?? widget.meta)
+              ?.copyWith(selectedVideoIndex: widget.meta?.selectedVideoIndex),
           original: meta,
           progress: widget.meta?.progress != null ? widget.meta!.progress : 0,
           service: state.data == null

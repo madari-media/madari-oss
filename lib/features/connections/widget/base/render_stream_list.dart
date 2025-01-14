@@ -18,8 +18,6 @@ const kIsWeb = bool.fromEnvironment('dart.library.js_util');
 class RenderStreamList extends StatefulWidget {
   final BaseConnectionService service;
   final LibraryItem id;
-  final String? episode;
-  final String? season;
   final bool shouldPop;
   final double? progress;
 
@@ -27,8 +25,6 @@ class RenderStreamList extends StatefulWidget {
     super.key,
     required this.service,
     required this.id,
-    this.season,
-    this.episode,
     this.progress,
     required this.shouldPop,
   });
@@ -173,8 +169,6 @@ class _RenderStreamListState extends State<RenderStreamList> {
 
     await widget.service.getStreams(
       widget.id,
-      episode: widget.episode,
-      season: widget.season,
       callback: (items, error) {
         if (mounted) {
           setState(() {
@@ -303,25 +297,7 @@ class _RenderStreamListState extends State<RenderStreamList> {
               }
             }
 
-            int? season;
-            int? episode;
-
-            if (widget.season != null) {
-              season = int.parse(widget.season!);
-            } else if ((widget.id as Meta).nextSeason != null) {
-              season = (widget.id as Meta).nextSeason!;
-            }
-
-            if (widget.episode != null) {
-              episode = int.parse(widget.episode!);
-            } else if ((widget.id as Meta).nextEpisode != null) {
-              episode = (widget.id as Meta).nextEpisode!;
-            }
-
-            final meta = (widget.id as Meta).copyWith(
-              nextSeason: season,
-              nextEpisode: episode,
-            );
+            final meta = (widget.id as Meta).copyWith();
 
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -329,7 +305,6 @@ class _RenderStreamListState extends State<RenderStreamList> {
                   source: item.source,
                   service: widget.service,
                   meta: meta,
-                  season: meta.nextSeason?.toString(),
                   progress: widget.progress,
                 ),
               ),

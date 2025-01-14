@@ -14,7 +14,6 @@ import '../../../utils/load_language.dart';
 import '../../connections/types/stremio/stremio_base.types.dart' as types;
 import '../../connections/widget/stremio/stremio_season_selector.dart';
 import '../../trakt/service/trakt.service.dart';
-import '../../trakt/types/common.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
 import 'video_viewer/video_viewer_ui.dart';
@@ -55,7 +54,9 @@ class _VideoViewerState extends State<VideoViewer> {
     return duration > 0 ? (position / duration * 100) : 0;
   }
 
-  Future<List<TraktProgress>>? traktProgress;
+  bool timeLoaded = false;
+
+  Future<types.Meta>? traktProgress;
 
   Future<void> saveWatchHistory() async {
     final duration = player.state.duration.inSeconds;
@@ -65,10 +66,17 @@ class _VideoViewerState extends State<VideoViewer> {
       return;
     }
 
-    final position = player.state.position.inSeconds;
-    final progress = duration > 0 ? (position / duration * 100).round() : 0;
+    if (gotFromTraktDuration == false) {
+      _logger.info(
+        "did not start the scrobbing because initially time is not retrieved from the api",
+      );
+      return;
+    }
 
-    if (progress == 0) {
+    final position = player.state.position.inSeconds;
+    final progress = duration > 0 ? (position / duration * 100) : 0;
+
+    if (progress < 0.01) {
       _logger.info('No progress to save.');
       return;
     }
@@ -99,7 +107,7 @@ class _VideoViewerState extends State<VideoViewer> {
     await zeeeWatchHistory!.saveWatchHistory(
       history: WatchHistory(
         id: _source.id,
-        progress: progress,
+        progress: progress.round(),
         duration: duration.toDouble(),
         episode: _source.episode,
         season: _source.season,
@@ -116,44 +124,50 @@ class _VideoViewerState extends State<VideoViewer> {
 
   late DocSource _source;
 
-  bool canCallOnce = false;
+  bool gotFromTraktDuration = false;
 
   int? traktId;
 
   Future<void> setDurationFromTrakt() async {
-    if (player.state.duration.inSeconds < 2) {
-      return;
+    try {
+      if (player.state.duration.inSeconds < 2) {
+        return;
+      }
+
+      if (gotFromTraktDuration) {
+        return;
+      }
+
+      gotFromTraktDuration = true;
+
+      if (!TraktService.isEnabled() || traktProgress == null) {
+        player.play();
+        return;
+      }
+
+      final progress = await traktProgress;
+
+      if (widget.meta is! types.Meta) {
+        return;
+      }
+
+      final meta = (progress ?? widget.meta) as types.Meta;
+
+      final duration = Duration(
+        seconds: calculateSecondsFromProgress(
+          player.state.duration.inSeconds.toDouble(),
+          meta.currentVideo?.progress ?? meta.progress ?? 0,
+        ),
+      );
+
+      if (duration.inSeconds > 10) {
+        await player.seek(duration);
+      }
+
+      await player.play();
+    } catch (e) {
+      await player.play();
     }
-
-    if (canCallOnce) {
-      return;
-    }
-
-    canCallOnce = true;
-
-    if (!TraktService.isEnabled() || traktProgress == null) {
-      player.play();
-      return;
-    }
-
-    final progress = await traktProgress;
-
-    if ((progress ?? []).isEmpty) {
-      player.play();
-      return;
-    }
-
-    traktId = progress!.first.traktId;
-
-    final duration = Duration(
-      seconds: calculateSecondsFromProgress(
-        player.state.duration.inSeconds.toDouble(),
-        progress.first.progress,
-      ),
-    );
-
-    await player.seek(duration);
-    await player.play();
   }
 
   List<StreamSubscription> listener = [];
@@ -190,9 +204,7 @@ class _VideoViewerState extends State<VideoViewer> {
     });
 
     _streamListen = player.stream.playing.listen((playing) {
-      if (playing) {
-        saveWatchHistory();
-      }
+      saveWatchHistory();
     });
 
     if (widget.meta is types.Meta && TraktService.isEnabled()) {
@@ -250,7 +262,6 @@ class _VideoViewerState extends State<VideoViewer> {
     }
   }
 
-  late StreamSubscription<bool> _streamComplete;
   late StreamSubscription<bool> _streamListen;
   late StreamSubscription<dynamic> _duration;
 

@@ -300,11 +300,7 @@ class StremioConnectionService extends BaseConnectionService {
 
             return (item as Meta).copyWith(
               progress: (res as Meta).progress,
-              nextSeason: res.nextSeason,
-              nextEpisode: res.nextEpisode,
-              nextEpisodeTitle: res.nextEpisodeTitle,
-              externalIds: res.externalIds,
-              episodeExternalIds: res.episodeExternalIds,
+              selectedVideoIndex: res.selectedVideoIndex,
             );
           }).catchError((err, stack) {
             _logger.severe('Error fetching item: ${res.id}', err, stack);
@@ -422,8 +418,6 @@ class StremioConnectionService extends BaseConnectionService {
   @override
   Future<void> getStreams(
     LibraryItem id, {
-    String? season,
-    String? episode,
     OnStreamCallback? callback,
   }) async {
     _logger.fine('Fetching streams for item: ${id.id}');
@@ -491,8 +485,6 @@ class StremioConnectionService extends BaseConnectionService {
                   (item) => videoStreamToStreamList(
                     item,
                     meta,
-                    season,
-                    episode,
                     addonManifest,
                   ),
                 )
@@ -558,8 +550,6 @@ class StremioConnectionService extends BaseConnectionService {
   StreamList? videoStreamToStreamList(
     VideoStream item,
     Meta meta,
-    String? season,
-    String? episode,
     StremioManifest addonManifest,
   ) {
     String streamTitle = (item.name != null
@@ -597,8 +587,6 @@ class StremioConnectionService extends BaseConnectionService {
         infoHash: item.infoHash!,
         id: meta.id,
         fileName: "$title.mp4",
-        season: season,
-        episode: episode,
       );
     }
 

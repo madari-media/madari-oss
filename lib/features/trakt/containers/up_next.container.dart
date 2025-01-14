@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/trakt/service/trakt.service.dart';
+import 'package:madari_client/utils/common.dart';
 
+import '../../connections/types/stremio/stremio_base.types.dart';
 import '../../connections/widget/base/render_library_list.dart';
 import '../../settings/screen/trakt_integration_screen.dart';
 
@@ -155,6 +158,49 @@ class TraktContainerState extends State<TraktContainer> {
     }
   }
 
+  late final Map<String, List<ContextMenuItem>> actions = {
+    "continue_watching": [
+      ContextMenuItem(
+        id: "remove",
+        icon: CupertinoIcons.clear,
+        title: 'Remove',
+        isDestructiveAction: true,
+        onCallback: (action, key) async {
+          if (key is! Meta) {
+            return;
+          }
+
+          if (key.traktProgressId == null) {
+            return;
+          }
+
+          await TraktService.instance!.removeFromContinueWatching(
+            key.traktProgressId!.toString(),
+          );
+
+          if (context.mounted && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Removed successfully"),
+              ),
+            );
+          }
+        },
+      ),
+    ],
+    "watchlist": [
+      ContextMenuItem(
+        id: "remove",
+        icon: CupertinoIcons.clear,
+        title: 'Remove',
+        isDestructiveAction: true,
+        onCallback: (action, key) {
+          TraktService.instance!.removeFromWatchlist(key as Meta);
+        },
+      ),
+    ],
+  };
+
   Future<void> refresh() async {
     try {
       _logger.info('Refreshing data for ${widget.loadId}');
@@ -209,6 +255,16 @@ class TraktContainerState extends State<TraktContainer> {
                                 },
                                 items: _cachedItems ?? [],
                                 error: _error,
+                                contextMenuItems:
+                                    actions.containsKey(widget.loadId)
+                                        ? actions[widget.loadId]!
+                                        : [],
+                                onContextMenu: (action, items) {
+                                  actions[widget.loadId]!
+                                      .firstWhereOrNull((item) {
+                                    return item.id == action;
+                                  })?.onCallback!(action, items);
+                                },
                                 isLoadingMore: _isLoading,
                                 hasError: _error != null,
                                 heroPrefix: "trakt_up_next${widget.loadId}",
@@ -276,9 +332,20 @@ class TraktContainerState extends State<TraktContainer> {
                 SizedBox(
                   height: getListHeight(context),
                   child: RenderListItems(
-                    isWide: widget.loadId == "up_next_series",
+                    isWide: widget.loadId == "up_next_series" ||
+                        widget.loadId == "upcoming_schedule",
                     items: _cachedItems ?? [],
                     error: _error,
+                    contextMenuItems: actions.containsKey(widget.loadId)
+                        ? actions[widget.loadId]!
+                        : [],
+                    onContextMenu: (action, items) async {
+                      actions[widget.loadId]!.firstWhereOrNull((item) {
+                        return item.id == action;
+                      })?.onCallback!(action, items);
+
+                      Navigator.of(context, rootNavigator: true).pop();
+                    },
                     itemScrollController: _scrollController,
                     hasError: _error != null,
                     heroPrefix: "trakt_up_next${widget.loadId}",
