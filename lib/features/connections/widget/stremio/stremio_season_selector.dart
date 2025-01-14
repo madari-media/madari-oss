@@ -82,25 +82,23 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
 
       final result = await traktService!.getWatchedShowsWithEpisodes(widget.meta);
       watchedEpisodesBySeason.clear();
-      print("Trakt Result: $result"); // Print the raw Trakt result
+      
 
       for (final show in result) {
-        print("Show Title: ${show.title}"); // Print the show title
+       
         if (show.episodes != null) {
-          print("Episodes for ${show.title}:");
+          
           for (final episode in show.episodes!) {
-            print("  - Season: ${episode.season}, Episode: ${episode.episode}, Watched At: ${episode.watchedAt}");
+            
             if (!watchedEpisodesBySeason.containsKey(episode.season)) {
               watchedEpisodesBySeason[episode.season] = {};
             }
             watchedEpisodesBySeason[episode.season]!.add(episode.episode);
           }
         } else {
-          print("No episodes found for ${show.title}");
+        
         }
       }
-
-      print("Watched Episodes By Season: $watchedEpisodesBySeason"); // Print the final map
       setState(() {});
       return;
 
