@@ -34,13 +34,13 @@ class StremioItemSeasonSelector extends StatefulWidget {
 class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     with SingleTickerProviderStateMixin {
   int? selectedSeason;
-  late TabController? _tabController;
   late final Map<int, List<Video>> seasonMap;
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
 
   late Meta meta = widget.meta;
 
   final Map<String, double> _progress = {};
+  Map<int, Set<int>> watchedEpisodesBySeason = {};
 
   @override
   void initState() {
@@ -51,25 +51,63 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     if (seasonMap.keys.isEmpty) {
       return;
     }
+    if (seasonMap.isNotEmpty) {
+      final seasons = seasonMap.keys.toList()..sort();
+      int initialSeason = getSelectedSeason();
 
-    final index = getSelectedSeason();
-
-    _tabController = TabController(
-      length: seasonMap.keys.length,
-      vsync: this,
-      initialIndex: index.clamp(
-        0,
-        seasonMap.keys.isNotEmpty ? seasonMap.keys.length - 1 : 0,
-      ),
-    );
-
-    // This is for rendering the component again for the selection of another tab
-    _tabController!.addListener(() {
-      setState(() {});
-    });
+      if (seasons.contains(initialSeason)) {
+        // Check if initialSeason is in seasons
+        selectedSeason = initialSeason;
+      } else if (seasons.isNotEmpty) {
+        selectedSeason = seasons.first; // Or any other default if not found
+      }
+    }
 
     getWatchHistory();
+    getWatchedHistory();
   }
+
+getWatchedHistory() async {
+  final traktService = TraktService.instance;
+  try {
+    final result =
+    await traktService!.getWatchedShowsWithEpisodes(widget.meta);
+    watchedEpisodesBySeason.clear();
+    for (final show in result) {
+      if (show.episodes != null) {
+        for (final episode in show.episodes!) {
+          if (!watchedEpisodesBySeason.containsKey(episode.season)) {
+            watchedEpisodesBySeason[episode.season] = {};
+          }
+          watchedEpisodesBySeason[episode.season]!.add(episode.episode);
+        }
+      } else {
+        //print("No episodes found for ${show.title}");
+      }
+    }
+
+    setState(() {});
+    return;
+  } catch (e, stack) {
+    print("Error fetching Trakt data: $e");
+    print("Stack Trace: $stack");
+  }
+}
+bool isEpisodeWatched(int season, int episode) {
+  return watchedEpisodesBySeason.containsKey(season) &&
+      watchedEpisodesBySeason[season]!.contains(episode);
+}
+
+bool isSeasonWatched(int season) {
+  if (!watchedEpisodesBySeason.containsKey(season)) {
+    return false; // No episodes watched in this season
+  }
+  if (seasonMap.containsKey(season)) {
+    return watchedEpisodesBySeason[season]!.length ==
+        seasonMap[season]!.length;
+  }
+  return false;
+}
 
   int getSelectedSeason() {
     return widget.meta.currentVideo?.season ??
@@ -94,8 +132,6 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           meta = result;
         });
 
-        final index = getSelectedSeason();
-        _tabController?.animateTo(index);
 
         return;
       }
@@ -119,14 +155,10 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
       _progress[item.id] = item.progress.toDouble();
     }
 
-    final index = getSelectedSeason();
-
-    _tabController?.animateTo(index);
   }
 
   @override
   void dispose() {
-    _tabController?.dispose();
     super.dispose();
   }
 
@@ -190,22 +222,15 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     final isWideScreen = screenWidth > 900;
     final contentWidth = isWideScreen ? 900.0 : screenWidth;
 
-    if (_tabController == null) {
+    if (seasonMap.keys.isEmpty) {
       return const SliverMainAxisGroup(
         slivers: [
           SliverToBoxAdapter(
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 0,
-                )
-              ],
-            ),
+            child: Center(child: Text("No seasons available")),
           ),
         ],
       );
     }
-
     return SliverMainAxisGroup(
       slivers: [
         SliverPadding(
@@ -215,6 +240,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           sliver: SliverToBoxAdapter(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(
                   height: 12,
@@ -236,25 +262,47 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                     ),
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TabBar(
-                    tabAlignment: TabAlignment.start,
-                    dividerColor: Colors.transparent,
-                    controller: _tabController,
-                    isScrollable: true,
-                    splashBorderRadius: BorderRadius.circular(8),
-                    padding: const EdgeInsets.all(4),
-                    tabs: seasons.map((season) {
-                      return Tab(
-                        text: season == 0 ? "Specials" : 'Season $season',
-                        height: 40,
-                      );
-                    }).toList(),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                      ),
+
+                      value: selectedSeason,
+                      onChanged: (newValue) {
+                        setState(() {
+                          selectedSeason = newValue!;
+                        });
+                      },
+                      items: seasons.map((season) {
+                        final isWatched = isSeasonWatched(season);
+                        return DropdownMenuItem<int>(
+                          value: season,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Text(season == 0 ? "Specials" : 'Season $season'),
+                              if (isWatched) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 16,
+
+                                )
+                              ]
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -268,19 +316,23 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final currentSeason = seasons[_tabController!.index];
+                  (context, index) {
+                final currentSeason = selectedSeason;
+                if (currentSeason == null ||
+                    !seasonMap.containsKey(currentSeason)) {
+                  return const Center(child: Text("Select a season"));
+                }
                 final episodes = seasonMap[currentSeason]!;
                 final episode = episodes[index];
 
                 final videoIndex = meta.videos?.indexOf(episode);
 
                 final progress = ((!TraktService.isEnabled()
-                            ? (_progress[episode.id] ?? 0) / 100
-                            : videoIndex != -1
-                                ? (meta.videos![videoIndex!].progress)
-                                : 0.toDouble()) ??
-                        0) /
+                    ? (_progress[episode.id] ?? 0) / 100
+                    : videoIndex != -1
+                    ? (meta.videos![videoIndex!].progress)
+                    : 0.toDouble()) ??
+                    0) /
                     100;
 
                 return InkWell(
@@ -307,37 +359,37 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                             children: [
                               Container(
                                 child: episode.thumbnail != null &&
-                                        episode.thumbnail!.isNotEmpty
+                                    episode.thumbnail!.isNotEmpty
                                     ? Image.network(
-                                        episode.thumbnail!,
-                                        width: 140,
-                                        height: 90,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return Container(
-                                            width: 140,
-                                            height: 90,
-                                            color: colorScheme
-                                                .surfaceContainerHighest,
-                                            child: Icon(
-                                              Icons.movie,
-                                              color:
-                                                  colorScheme.onSurfaceVariant,
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : Container(
-                                        width: 140,
-                                        height: 90,
+                                  episode.thumbnail!,
+                                  width: 140,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) {
+                                    return Container(
+                                      width: 140,
+                                      height: 90,
+                                      color: colorScheme
+                                          .surfaceContainerHighest,
+                                      child: Icon(
+                                        Icons.movie,
                                         color:
-                                            colorScheme.surfaceContainerHighest,
-                                        child: Icon(
-                                          Icons.movie,
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
+                                        colorScheme.onSurfaceVariant,
                                       ),
+                                    );
+                                  },
+                                )
+                                    : Container(
+                                  width: 140,
+                                  height: 90,
+                                  color:
+                                  colorScheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.movie,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
                               Positioned(
                                 top: 0,
@@ -359,7 +411,8 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                                   ],
                                 ),
                               ),
-                              if (progress > .9)
+                              if (isEpisodeWatched(
+                                  currentSeason, episode.episode!))
                                 Positioned(
                                   bottom: 0,
                                   right: 0,
@@ -368,7 +421,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                                     child: Container(
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
-                                        color: Colors.teal,
+                                        color: Colors.grey.shade900,
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.only(
@@ -378,14 +431,15 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                                           top: 2.0,
                                         ),
                                         child: Center(
-                                          child: Text(
-                                            "Watched",
-                                            style: Theme.of(context)
+                                          child: Icon(
+                                            Icons.done_all,
+                                            size: Theme.of(context)
                                                 .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: Colors.black,
-                                                ),
+                                                .bodyLarge!
+                                                .fontSize,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary, // Use primary color from theme
                                           ),
                                         ),
                                       ),
@@ -448,8 +502,10 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                   ),
                 );
               },
-              childCount:
-                  seasonMap[seasons[_tabController!.index]]?.length ?? 0,
+              childCount: selectedSeason != null &&
+                  seasonMap.containsKey(selectedSeason!)
+                  ? seasonMap[selectedSeason!]!.length
+                  : 0,
             ),
           ),
         ),
