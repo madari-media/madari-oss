@@ -1,25 +1,20 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
-import 'package:madari_client/features/doc_viewer/container/video_viewer/tv_controls.dart';
 import 'package:madari_client/features/watch_history/service/base_watch_history.dart';
-import 'package:madari_client/utils/tv_detector.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../utils/load_language.dart';
 import '../../connections/types/stremio/stremio_base.types.dart' as types;
-import '../../connections/widget/stremio/stremio_season_selector.dart';
 import '../../trakt/service/trakt.service.dart';
 import '../../watch_history/service/zeee_watch_history.dart';
 import '../types/doc_source.dart';
-import 'video_viewer/desktop_video_player.dart';
-import 'video_viewer/mobile_video_player.dart';
+import 'video_viewer/video_viewer_ui.dart';
 
 class VideoViewer extends StatefulWidget {
   final DocSource source;
@@ -42,7 +37,8 @@ class VideoViewer extends StatefulWidget {
 }
 
 class _VideoViewerState extends State<VideoViewer> {
-  StreamSubscription? _subTracks;
+  late LibraryItem? meta = widget.meta;
+
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
   Timer? _timer;
   late final Player player = Player(
@@ -50,7 +46,7 @@ class _VideoViewerState extends State<VideoViewer> {
       title: "Madari",
     ),
   );
-  late final GlobalKey<VideoState> key = GlobalKey<VideoState>();
+  final Logger _logger = Logger('VideoPlayer');
 
   double get currentProgressInPercentage {
     final duration = player.state.duration.inSeconds;
@@ -58,162 +54,220 @@ class _VideoViewerState extends State<VideoViewer> {
     return duration > 0 ? (position / duration * 100) : 0;
   }
 
-  Future<List<TraktProgress>>? traktProgress;
+  bool timeLoaded = false;
 
-  saveWatchHistory() {
+  Future<types.Meta>? traktProgress;
+
+  Future<void> saveWatchHistory() async {
+    _logger.info('Starting to save watch history...');
+
     final duration = player.state.duration.inSeconds;
 
-    if (duration < 30) {
+    if (duration <= 30) {
+      _logger.info('Video is too short to track.');
+      return;
+    }
+
+    if (gotFromTraktDuration == false) {
+      _logger.info(
+        "Did not start the scrobbling because initially time is not retrieved from the API.",
+      );
       return;
     }
 
     final position = player.state.position.inSeconds;
-    final progress = duration > 0 ? (position / duration * 100).round() : 0;
+    final progress = duration > 0 ? (position / duration * 100) : 0;
 
-    if (progress == 0) {
+    if (progress < 0.01) {
+      _logger.info('No progress to save.');
       return;
     }
 
-    if (widget.meta is types.Meta) {
+    if (meta is types.Meta && TraktService.instance != null) {
       try {
         if (player.state.playing) {
-          TraktService.instance!.startScrobbling(
-            meta: widget.meta as types.Meta,
+          _logger.info('Starting scrobbling...');
+          await TraktService.instance!.startScrobbling(
+            meta: meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         } else {
-          TraktService.instance!.stopScrobbling(
-            meta: widget.meta as types.Meta,
+          _logger.info('Stopping scrobbling...');
+          await TraktService.instance!.stopScrobbling(
+            meta: meta as types.Meta,
             progress: currentProgressInPercentage,
           );
         }
       } catch (e) {
-        print(e);
+        _logger.severe('Error during scrobbling: $e');
         TraktService.instance!.debugLogs.add(e.toString());
       }
+    } else {
+      _logger.warning('Meta is not valid or TraktService is not initialized.');
     }
 
-    zeeeWatchHistory!.saveWatchHistory(
+    await zeeeWatchHistory!.saveWatchHistory(
       history: WatchHistory(
         id: _source.id,
-        progress: progress,
+        progress: progress.round(),
         duration: duration.toDouble(),
         episode: _source.episode,
         season: _source.season,
       ),
     );
+
+    _logger.info('Watch history saved successfully.');
   }
 
   late final controller = VideoController(
     player,
-    configuration: const VideoControllerConfiguration(
-      enableHardwareAcceleration: true,
+    configuration: VideoControllerConfiguration(
+      enableHardwareAcceleration: !config.softwareAcceleration,
     ),
   );
 
-  List<SubtitleTrack> subtitles = [];
-  List<AudioTrack> audioTracks = [];
-  Map<String, String> languages = {};
-
   late DocSource _source;
 
-  void setDefaultAudioTracks(Tracks tracks) {
-    if (defaultConfigSelected == true &&
-        (tracks.audio.length <= 1 || tracks.audio.length <= 1)) {
-      return;
-    }
+  bool gotFromTraktDuration = false;
 
-    defaultConfigSelected = true;
+  int? traktId;
 
-    controller.player.setRate(config.playbackSpeed);
+  Future<void> setDurationFromTrakt({
+    Future<types.Meta>? traktProgress,
+  }) async {
+    _logger.info('Setting duration from Trakt...');
 
-    final defaultSubtitle = config.defaultSubtitleTrack;
-    final defaultAudio = config.defaultAudioTrack;
-
-    for (final item in tracks.audio) {
-      if (defaultAudio == item.id ||
-          defaultAudio == item.language ||
-          defaultAudio == item.title) {
-        controller.player.setAudioTrack(item);
-        break;
+    try {
+      if (player.state.duration.inSeconds < 2) {
+        _logger.info('Duration is too short to set from Trakt.');
+        return;
       }
-    }
 
-    if (config.disableSubtitle) {
-      for (final item in tracks.subtitle) {
-        if (item.id == "no" || item.language == "no" || item.title == "no") {
-          controller.player.setSubtitleTrack(item);
-        }
+      if (gotFromTraktDuration) {
+        _logger.info('Duration already set from Trakt.');
+        return;
       }
-    } else {
-      for (final item in tracks.subtitle) {
-        if (defaultSubtitle == item.id ||
-            defaultSubtitle == item.language ||
-            defaultSubtitle == item.title) {
-          controller.player.setSubtitleTrack(item);
-          break;
-        }
+
+      gotFromTraktDuration = true;
+
+      if (!TraktService.isEnabled() ||
+          (traktProgress ?? this.traktProgress) == null) {
+        _logger.info(
+            'Trakt service is not enabled or progress is null. Playing video.');
+        player.play();
+        return;
       }
+
+      final progress = await (traktProgress ?? this.traktProgress);
+
+      if (this.meta is! types.Meta) {
+        _logger.info('Meta is not of type types.Meta.');
+        return;
+      }
+
+      final meta = (progress ?? this.meta) as types.Meta;
+
+      final duration = Duration(
+        seconds: calculateSecondsFromProgress(
+          player.state.duration.inSeconds.toDouble(),
+          meta.currentVideo?.progress ?? meta.progress ?? 0,
+        ),
+      );
+
+      if (duration.inSeconds > 10) {
+        _logger.info('Seeking to duration: $duration');
+        await player.seek(duration);
+      }
+
+      await player.play();
+      _logger.info('Video started playing.');
+    } catch (e) {
+      _logger.severe('Error setting duration from Trakt: $e');
+      await player.play();
     }
-  }
-
-  void onPlaybackReady(Tracks tracks) {
-    setState(() {
-      audioTracks = tracks.audio.where((item) {
-        return item.id != "auto" && item.id != "no";
-      }).toList();
-
-      subtitles = tracks.subtitle.where((item) {
-        return item.id != "auto";
-      }).toList();
-    });
-  }
-
-  bool canCallOnce = false;
-
-  setDurationFromTrakt() async {
-    if (player.state.duration.inSeconds < 2) {
-      return;
-    }
-
-    if (canCallOnce) {
-      return;
-    }
-
-    canCallOnce = true;
-
-    if (!TraktService.instance!.isEnabled() || traktProgress == null) {
-      player.play();
-      return;
-    }
-
-    final progress = await traktProgress;
-
-    if ((progress ?? []).isEmpty) {
-      player.play();
-      return;
-    }
-
-    final duration = Duration(
-      seconds: calculateSecondsFromProgress(
-        player.state.duration.inSeconds.toDouble(),
-        progress!.first.progress,
-      ),
-    );
-
-    player.seek(duration);
-    player.play();
   }
 
   List<StreamSubscription> listener = [];
 
   PlaybackConfig config = getPlaybackConfig();
 
-  bool defaultConfigSelected = false;
+  Future setupVideoThings() async {
+    _logger.info('Setting up video things...');
+
+    traktProgress = null;
+    traktProgress = TraktService.instance!.getProgress(
+      meta as types.Meta,
+      bypassCache: true,
+    );
+
+    _duration = player.stream.duration.listen((item) async {
+      if (meta is types.Meta) {
+        setDurationFromTrakt(traktProgress: traktProgress);
+      }
+
+      if (item.inSeconds != 0) {
+        _logger.info('Duration updated: $item');
+        await saveWatchHistory();
+      }
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _logger.info('Periodic save watch history triggered.');
+      saveWatchHistory();
+    });
+
+    _streamListen = player.stream.playing.listen((playing) {
+      _logger.info('Playing state changed: $playing');
+      saveWatchHistory();
+    });
+
+    _logger.info('Loading file...');
+
+    return loadFile();
+  }
+
+  destroyVideoThing() async {
+    _logger.info('Destroying video things...');
+
+    timeLoaded = false;
+    gotFromTraktDuration = false;
+    traktProgress = null;
+
+    for (final item in listener) {
+      item.cancel();
+    }
+    listener = [];
+    _timer?.cancel();
+    _streamListen?.cancel();
+    _duration?.cancel();
+
+    if (meta is types.Meta && player.state.duration.inSeconds > 30) {
+      _logger.info('Stopping scrobbling and clearing cache...');
+      await TraktService.instance!.stopScrobbling(
+        meta: meta as types.Meta,
+        progress: currentProgressInPercentage,
+        shouldClearCache: true,
+        traktId: traktId,
+      );
+    }
+
+    _logger.info('Video things destroyed.');
+  }
+
+  GlobalKey videoKey = GlobalKey();
+
+  generateNewKey() {
+    _logger.info('Generating new key...');
+    videoKey = GlobalKey();
+
+    setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
+    _logger.info('Initializing VideoViewer...');
+
     _source = widget.source;
 
     SystemChrome.setEnabledSystemUIMode(
@@ -221,89 +275,55 @@ class _VideoViewerState extends State<VideoViewer> {
       overlays: [],
     );
 
-    if (!kIsWeb) {
-      if (Platform.isAndroid || Platform.isIOS) {
-        WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-          key.currentState?.enterFullscreen();
-        });
-      }
-    }
-
-    _duration = player.stream.duration.listen((item) {
-      if (item.inSeconds != 0) {
-        setDurationFromTrakt();
-      }
-    });
-
-    _streamComplete = player.stream.completed.listen((completed) {
-      if (completed) {
-        onLibrarySelect();
-      }
-    });
-
-    _subTracks = player.stream.tracks.listen((tracks) {
-      if (mounted) {
-        setDefaultAudioTracks(tracks);
-        onPlaybackReady(tracks);
-      }
-    });
-
-    loadLanguages(context).then((language) {
-      if (mounted) {
-        setState(() {
-          languages = language;
-        });
-      }
-    });
-
-    loadFile();
-
     if (player.platform is NativePlayer && !kIsWeb) {
       Future.microtask(() async {
+        _logger.info('Setting network timeout...');
         await (player.platform as dynamic).setProperty('network-timeout', '60');
       });
     }
 
-    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      saveWatchHistory();
-    });
+    onVideoChange(
+      _source,
+      widget.meta!,
+    );
 
-    _streamListen = player.stream.playing.listen((playing) {
-      if (playing) {
-        saveWatchHistory();
-      }
-    });
-
-    if (widget.meta is types.Meta) {
-      traktProgress = TraktService.instance!.getProgress(
-        widget.meta as types.Meta,
-      );
-    }
+    _logger.info('VideoViewer initialized.');
   }
 
-  loadFile() async {
-    final item = await zeeeWatchHistory!.getItemWatchHistory(
-      ids: [
-        WatchHistoryGetRequest(
-          id: _source.id,
-          season: _source.season,
-          episode: _source.episode,
-        ),
-      ],
-    );
+  Future<void> loadFile() async {
+    _logger.info('Loading file...');
 
-    final duration = Duration(
-      seconds: item.isEmpty
-          ? 0
-          : calculateSecondsFromProgress(
-              item.first.duration,
-              item.first.progress.toDouble(),
-            ),
-    );
+    Duration duration = const Duration(seconds: 0);
+
+    if (meta is types.Meta && TraktService.isEnabled()) {
+      _logger.info("Playing video ${(meta as types.Meta).selectedVideoIndex}");
+    } else {
+      final item = await zeeeWatchHistory!.getItemWatchHistory(
+        ids: [
+          WatchHistoryGetRequest(
+            id: _source.id,
+            season: _source.season,
+            episode: _source.episode,
+          ),
+        ],
+      );
+
+      duration = Duration(
+        seconds: item.isEmpty
+            ? 0
+            : calculateSecondsFromProgress(
+                item.first.duration,
+                item.first.progress.toDouble(),
+              ),
+      );
+    }
+
+    _logger.info('Loading file for source: ${_source.id}');
 
     switch (_source.runtimeType) {
       case const (FileSource):
         if (kIsWeb) {
+          _logger.info('FileSource is not supported on web.');
           return;
         }
         player.open(
@@ -325,289 +345,66 @@ class _VideoViewerState extends State<VideoViewer> {
           play: false,
         );
     }
+
+    _logger.info('File loaded successfully.');
   }
 
-  bool isScaled = false;
-
-  late StreamSubscription<bool> _streamComplete;
-  late StreamSubscription<bool> _streamListen;
-  late StreamSubscription<dynamic> _duration;
-
-  onLibrarySelect() async {
-    controller.player.pause();
-
-    final result = await showCupertinoDialog(
-      context: context,
-      builder: (context) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text("Seasons"),
-          ),
-          body: CustomScrollView(
-            slivers: [
-              StremioItemSeasonSelector(
-                service: widget.service,
-                meta: widget.meta as types.Meta,
-                shouldPop: true,
-                season: int.tryParse(widget.currentSeason!),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (result is MediaURLSource) {
-      _source = result;
-
-      loadFile();
-    }
-  }
+  StreamSubscription<bool>? _streamListen;
+  StreamSubscription<dynamic>? _duration;
 
   @override
   void dispose() {
+    _logger.info('Disposing VideoViewer...');
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    for (final item in listener) {
-      item.cancel();
-    }
+
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [],
     );
-    _timer?.cancel();
-    _subTracks?.cancel();
-    _streamComplete.cancel();
-    _streamListen.cancel();
-    _duration.cancel();
 
-    if (widget.meta is types.Meta && player.state.duration.inSeconds > 30) {
-      TraktService.instance!.stopScrobbling(
-        meta: widget.meta as types.Meta,
-        progress: currentProgressInPercentage,
-      );
-    }
-
+    destroyVideoThing();
     player.dispose();
 
     super.dispose();
+
+    _logger.info('VideoViewer disposed.');
+  }
+
+  onVideoChange(DocSource source, LibraryItem item) async {
+    setState(() {});
+    await destroyVideoThing();
+
+    _logger.info('Changing video source...');
+
+    _source = source;
+    meta = item;
+    setState(() {});
+    await setupVideoThings();
+    setState(() {});
+    generateNewKey();
+
+    _logger.info('Video source changed successfully.');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildBody(context),
-    );
-  }
-
-  _buildMobileView(BuildContext context) {
-    final mobile = getMobileVideoPlayer(
-      context,
-      onLibrarySelect: onLibrarySelect,
-      hasLibrary: widget.service != null &&
-          widget.library != null &&
-          widget.meta != null,
-      audioTracks: audioTracks,
-      player: player,
-      source: _source,
-      subtitles: subtitles,
-      onSubtitleClick: onSubtitleSelect,
-      onAudioClick: onAudioSelect,
-      toggleScale: () {
-        setState(() {
-          isScaled = !isScaled;
-        });
-      },
-    );
-       String subtitleStyleName = config.subtitleStyle ?? 'Normal';
-   String  subtitleStyleColor = config.subtitleColor ?? 'white';
-    double subtitleSize = config.subtitleSize ;
-    Color hexToColor(String hexColor) {
-      final hexCode = hexColor.replaceAll('#', '');
-      return Color(int.parse('0x$hexCode'));
-    }
-    FontStyle getFontStyleFromString(String styleName) {
-      switch (styleName.toLowerCase()) {
-        case 'italic':
-          return FontStyle.italic;
-        case 'normal': // Explicitly handle 'normal' (good practice)
-        default: // Default case for any other string or null
-          return FontStyle.normal;
-      }
-    }
-    FontStyle currentFontStyle = getFontStyleFromString(subtitleStyleName);
-    return MaterialVideoControlsTheme(
-      fullscreen: mobile,
-      normal: mobile,
-      child: Video(
-        subtitleViewConfiguration: SubtitleViewConfiguration(
-              style: TextStyle(color: hexToColor(subtitleStyleColor),
-              fontSize: subtitleSize,
-                  fontStyle: currentFontStyle,
-              fontWeight: FontWeight.bold),
-          ),
-        fit: isScaled ? BoxFit.fitWidth : BoxFit.fitHeight,
-        pauseUponEnteringBackgroundMode: true,
-        key: key,
-        onExitFullscreen: () async {
-          await defaultExitNativeFullscreen();
-          if (context.mounted) Navigator.of(context).pop();
-        },
+      body: VideoViewerUi(
+        key: videoKey,
         controller: controller,
-        controls: MaterialVideoControls,
-      ),
-    );
-  }
-
-  _buildDesktop(BuildContext context) {
-    final desktop = getDesktopControls(
-      context,
-      audioTracks: audioTracks,
-      player: player,
-      source: _source,
-      subtitles: subtitles,
-      onAudioSelect: onAudioSelect,
-      onSubtitleSelect: onSubtitleSelect,
-    );
-
-    return MaterialDesktopVideoControlsTheme(
-      normal: desktop,
-      fullscreen: desktop,
-      child: Video(
-        key: key,
-        width: MediaQuery.of(context).size.width,
-        fit: BoxFit.fitWidth,
-        controller: controller,
-        controls: MaterialDesktopVideoControls,
-      ),
-    );
-  }
-
-  _buildBody(BuildContext context) {
-    if (DeviceDetector.isTV()) {
-      return MaterialTvVideoControlsTheme(
-        fullscreen: const MaterialTvVideoControlsThemeData(),
-        normal: const MaterialTvVideoControlsThemeData(),
-        child: Video(
-          key: key,
-          width: MediaQuery.of(context).size.width,
-          fit: BoxFit.fitWidth,
-          controller: controller,
-          controls: MaterialTvVideoControls,
-        ),
-      );
-    }
-
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.android:
-      case TargetPlatform.iOS:
-        return _buildMobileView(context);
-      default:
-        return _buildDesktop(context);
-    }
-  }
-
-  onSubtitleSelect() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Card(
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.4,
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Select Subtitle',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: subtitles.length,
-                  itemBuilder: (context, index) {
-                    final currentItem = subtitles[index];
-
-                    final title = currentItem.language ??
-                        currentItem.title ??
-                        currentItem.id;
-
-                    return ListTile(
-                      title: Text(
-                        languages.containsKey(title)
-                            ? languages[title]!
-                            : title,
-                      ),
-                      selected:
-                          player.state.track.subtitle.id == currentItem.id,
-                      onTap: () {
-                        player.setSubtitleTrack(currentItem);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  onAudioSelect() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Card(
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.4,
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Select Audio Track',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: audioTracks.length,
-                  itemBuilder: (context, index) {
-                    final currentItem = audioTracks[index];
-                    final title = currentItem.language ??
-                        currentItem.title ??
-                        currentItem.id;
-                    return ListTile(
-                      title: Text(
-                        languages.containsKey(title)
-                            ? languages[title]!
-                            : title,
-                      ),
-                      selected: player.state.track.audio.id == currentItem.id,
-                      onTap: () {
-                        player.setAudioTrack(currentItem);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+        player: player,
+        config: config,
+        source: _source,
+        onLibrarySelect: () {},
+        service: widget.service,
+        meta: meta,
+        onSourceChange: (source, meta) => onVideoChange(source, meta),
       ),
     );
   }

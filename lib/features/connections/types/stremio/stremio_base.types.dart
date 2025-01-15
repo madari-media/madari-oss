@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -279,7 +278,7 @@ class Meta extends LibraryItem {
   @JsonKey(name: "id")
   final String id;
   @JsonKey(name: "videos")
-  final List<Video>? videos;
+  List<Video>? videos;
   @JsonKey(name: "genres")
   final List<String>? genres;
   @JsonKey(name: "releaseInfo")
@@ -299,24 +298,14 @@ class Meta extends LibraryItem {
   @JsonKey(name: "dvdRelease")
   final DateTime? dvdRelease;
 
+  final int? traktProgressId;
+
   @JsonKey(includeFromJson: false, includeToJson: false)
   final double? progress;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final int? nextSeason;
+  final int? selectedVideoIndex;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final int? nextEpisode;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final String? nextEpisodeTitle;
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final int? traktId;
-
-  final dynamic externalIds;
-
-  bool forceRegularMode;
+  bool? forceRegular = false;
 
   String get imdbRating {
     return (imdbRating_ ?? "").toString();
@@ -331,11 +320,9 @@ class Meta extends LibraryItem {
       return null;
     }
 
-    return videos?.firstWhereOrNull(
-      (episode) {
-        return nextEpisode == episode.episode && nextSeason == episode.season;
-      },
-    );
+    if (selectedVideoIndex != null) return videos![selectedVideoIndex!];
+
+    return null;
   }
 
   Meta({
@@ -344,22 +331,18 @@ class Meta extends LibraryItem {
     this.popularities,
     required this.type,
     this.cast,
-    this.traktId,
+    this.forceRegular,
     this.country,
-    this.forceRegularMode = false,
-    this.externalIds,
     this.description,
+    this.selectedVideoIndex,
     this.genre,
     this.imdbRating_,
     this.poster,
-    this.nextEpisode,
-    this.nextSeason,
     this.released,
     this.slug,
     this.year,
     this.status,
     this.tvdbId,
-    this.nextEpisodeTitle,
     this.director,
     this.writer,
     this.background,
@@ -381,6 +364,7 @@ class Meta extends LibraryItem {
     this.language,
     this.dvdRelease,
     this.progress,
+    this.traktProgressId,
   }) : super(id: id);
 
   Meta copyWith({
@@ -401,8 +385,11 @@ class Meta extends LibraryItem {
     dynamic tvdbId,
     List<dynamic>? director,
     List<String>? writer,
+    final dynamic traktInfo,
     String? background,
     String? logo,
+    dynamic externalIds,
+    dynamic episodeExternalIds,
     String? awards,
     int? moviedbId,
     String? runtime,
@@ -411,6 +398,7 @@ class Meta extends LibraryItem {
     String? id,
     List<Video>? videos,
     List<String>? genres,
+    int? selectedVideoIndex,
     String? releaseInfo,
     List<TrailerStream>? trailerStreams,
     List<Link>? links,
@@ -419,10 +407,9 @@ class Meta extends LibraryItem {
     List<CreditsCrew>? creditsCrew,
     String? language,
     DateTime? dvdRelease,
-    int? nextSeason,
-    int? nextEpisode,
-    String? nextEpisodeTitle,
     double? progress,
+    bool? forceRegular,
+    int? traktProgressId,
   }) =>
       Meta(
         imdbId: imdbId ?? this.imdbId,
@@ -431,13 +418,16 @@ class Meta extends LibraryItem {
         type: type ?? this.type,
         cast: cast ?? this.cast,
         country: country ?? this.country,
+        selectedVideoIndex: selectedVideoIndex ?? this.selectedVideoIndex,
         description: description ?? this.description,
         genre: genre ?? this.genre,
         imdbRating_: imdbRating ?? imdbRating_.toString(),
         poster: poster ?? this.poster,
         released: released ?? this.released,
+        traktProgressId: traktProgressId ?? this.traktProgressId,
         slug: slug ?? this.slug,
         year: year ?? this.year,
+        forceRegular: forceRegular ?? this.forceRegular,
         status: status ?? this.status,
         tvdbId: tvdbId ?? this.tvdbId,
         director: director ?? this.director,
@@ -460,9 +450,6 @@ class Meta extends LibraryItem {
         creditsCrew: creditsCrew ?? this.creditsCrew,
         language: language ?? this.language,
         dvdRelease: dvdRelease ?? this.dvdRelease,
-        nextEpisode: nextEpisode ?? this.nextEpisode,
-        nextEpisodeTitle: nextEpisodeTitle ?? this.nextEpisodeTitle,
-        nextSeason: nextSeason ?? this.nextSeason,
         progress: progress ?? this.progress,
       );
 
@@ -473,13 +460,20 @@ class Meta extends LibraryItem {
   }
 
   Map<String, dynamic> toJson() => _$MetaToJson(this);
+
+  String toString() {
+    if (currentVideo != null) {
+      return "$name ${currentVideo!.name} S${currentVideo!.season} E${currentVideo!.episode}";
+    }
+    return name ?? "No name";
+  }
 }
 
 @JsonSerializable()
 class BehaviorHints {
   @JsonKey(name: "defaultVideoId")
   final dynamic defaultVideoId;
-  @JsonKey(name: "hasScheduledVideos")
+  @JsonKey(name: "hasScheduledVideos", defaultValue: false)
   final bool hasScheduledVideos;
 
   BehaviorHints({
@@ -669,7 +663,7 @@ class Trailer {
 @JsonSerializable()
 class Video {
   @JsonKey(name: "name")
-  final String? name;
+  String? name;
   @JsonKey(name: "season")
   final int season;
   @JsonKey(name: "number")
@@ -677,7 +671,7 @@ class Video {
   @JsonKey(name: "firstAired")
   final DateTime? firstAired;
   @JsonKey(name: "tvdb_id")
-  final int? tvdbId;
+  int? tvdbId;
   @JsonKey(name: "overview")
   final String? overview;
   @JsonKey(name: "thumbnail")
@@ -694,6 +688,8 @@ class Video {
   final String? title;
   @JsonKey(name: "moviedb_id")
   final int? moviedbId;
+  double? progress;
+  dynamic ids;
 
   Video({
     this.name,
@@ -702,13 +698,15 @@ class Video {
     this.firstAired,
     this.tvdbId,
     this.overview,
-    required this.thumbnail,
+    this.thumbnail,
     required this.id,
-    required this.released,
+    this.released,
     this.episode,
     this.description,
     this.title,
     this.moviedbId,
+    this.progress,
+    this.ids,
   });
 
   Video copyWith({

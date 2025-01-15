@@ -87,10 +87,10 @@ class StremioService extends BaseConnectionService {
         },
       ).toList();
 
-      if (resources.contains("catalog")) {
+      if (resources.contains("catalog") ||
+          manifest.catalogs?.isNotEmpty == true) {
         for (final item
             in (manifest.catalogs ?? [] as List<StremioManifestCatalog>)) {
-          print(item.toJson());
           result.add(
             FolderItem(
               title: item.name == null

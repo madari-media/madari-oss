@@ -1,4 +1,5 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:madari_client/engine/engine.dart';
@@ -289,21 +290,16 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
               .whereType<LibraryItem>()
               .toList();
 
-          if (data.status == QueryStatus.loading && items.isEmpty) {
-            return const CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SpinnerCards(),
-                )
-              ],
-            );
-          }
-
           return RenderListItems(
             hasError: data.status == QueryStatus.error,
             onRefresh: () {
               query.refetch();
             },
+            loadMore: () {
+              query.getNextPage();
+            },
+            itemScrollController: _scrollController,
+            isLoadingMore: data.status == QueryStatus.loading && items.isEmpty,
             isGrid: widget.isGrid,
             items: items,
             heroPrefix: widget.item.id,
@@ -315,7 +311,30 @@ class __RenderLibraryListState extends State<_RenderLibraryList> {
   }
 }
 
-class RenderListItems extends StatelessWidget {
+typedef OnContextTap = void Function(
+  String actionId,
+  LibraryItem item,
+);
+
+class ContextMenuItem {
+  final String id;
+  final String title;
+  final bool isDefaultAction;
+  final bool isDestructiveAction;
+  final IconData? icon;
+  final OnContextTap? onCallback;
+
+  ContextMenuItem({
+    required this.title,
+    this.isDefaultAction = false,
+    this.isDestructiveAction = false,
+    this.icon,
+    required this.id,
+    this.onCallback,
+  });
+}
+
+class RenderListItems extends StatefulWidget {
   final ScrollController? controller;
   final ScrollController? itemScrollController;
   final bool isGrid;
@@ -326,6 +345,10 @@ class RenderListItems extends StatelessWidget {
   final String heroPrefix;
   final dynamic error;
   final bool isWide;
+  final bool isLoadingMore;
+  final VoidCallback? loadMore;
+  final List<ContextMenuItem> contextMenuItems;
+  final OnContextTap? onContextMenu;
 
   const RenderListItems({
     super.key,
@@ -339,21 +362,32 @@ class RenderListItems extends StatelessWidget {
     this.itemScrollController,
     this.error,
     this.isWide = false,
+    this.isLoadingMore = false,
+    this.loadMore,
+    this.contextMenuItems = const [],
+    this.onContextMenu,
   });
 
+  @override
+  State<RenderListItems> createState() => _RenderListItemsState();
+}
+
+class _RenderListItemsState extends State<RenderListItems> {
   @override
   Widget build(BuildContext context) {
     final listHeight = getListHeight(context);
     final itemWidth = getItemWidth(
       context,
-      isWide: isWide,
+      isWide: widget.isWide,
     );
 
     return CustomScrollView(
-      controller: controller,
-      physics: isGrid ? null : const NeverScrollableScrollPhysics(),
+      controller: widget.controller,
+      physics: widget.isGrid
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       slivers: [
-        if (hasError)
+        if (widget.hasError)
           SliverToBoxAdapter(
             child: SizedBox(
               height: listHeight,
@@ -369,7 +403,7 @@ class RenderListItems extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Something went wrong while loading the library \n$error",
+                        "Something went wrong while loading the library \n${widget.error}",
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
@@ -378,7 +412,7 @@ class RenderListItems extends StatelessWidget {
                       ),
                       TextButton.icon(
                         label: const Text("Retry"),
-                        onPressed: onRefresh,
+                        onPressed: widget.onRefresh,
                         icon: const Icon(
                           Icons.refresh,
                         ),
@@ -389,7 +423,7 @@ class RenderListItems extends StatelessWidget {
               ),
             ),
           ),
-        if (isGrid)
+        if (widget.isGrid) ...[
           SliverGrid.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: getGridResponsiveColumnCount(context),
@@ -397,40 +431,115 @@ class RenderListItems extends StatelessWidget {
               crossAxisSpacing: getGridResponsiveSpacing(context),
               childAspectRatio: 2 / 3,
             ),
-            itemCount: items.length,
+            itemCount: widget.items.length,
             itemBuilder: (ctx, index) {
-              final item = items[index];
+              final item = widget.items[index];
 
-              return service.renderCard(
+              return widget.service.renderCard(
                 item,
-                "${index}_$heroPrefix",
+                "${index}_${widget.heroPrefix}",
               );
             },
           ),
-        if (!isGrid)
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: listHeight,
-              child: ListView.builder(
-                itemBuilder: (ctx, index) {
-                  final item = items[index];
-
-                  return SizedBox(
-                    width: itemWidth,
-                    child: Container(
-                      decoration: const BoxDecoration(),
-                      child: service.renderCard(
-                        item,
-                        "${index}_${heroPrefix}",
+          if (widget.isLoadingMore)
+            SliverPadding(
+              padding: const EdgeInsets.only(
+                top: 8.0,
+                right: 8.0,
+              ),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: getGridResponsiveColumnCount(context),
+                  mainAxisSpacing: getGridResponsiveSpacing(context),
+                  crossAxisSpacing: getGridResponsiveSpacing(context),
+                  childAspectRatio: 2 / 3,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Shimmer.fromColors(
+                        baseColor: Colors.grey[800]!,
+                        highlightColor: Colors.grey[700]!,
+                        child: Container(
+                          color: Colors.grey[800],
+                        ),
                       ),
-                    ),
-                  );
-                },
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
+                    );
+                  },
+                  childCount: 4, // Fixed number of loading items
+                ),
               ),
             ),
-          ),
+        ] else ...[
+          if (!widget.isLoadingMore)
+            SliverToBoxAdapter(
+              child: CupertinoPageScaffold(
+                resizeToAvoidBottomInset: true,
+                child: SizedBox(
+                  height: listHeight,
+                  child: ListView.builder(
+                    controller: widget.itemScrollController,
+                    itemBuilder: (ctx, index) {
+                      final item = widget.items[index];
+
+                      if (widget.contextMenuItems.isEmpty) {
+                        return SizedBox(
+                          width: itemWidth,
+                          child: Container(
+                            child: widget.service.renderCard(
+                              item,
+                              "${index}_${widget.heroPrefix}",
+                            ),
+                          ),
+                        );
+                      }
+
+                      return CupertinoContextMenu(
+                        enableHapticFeedback: true,
+                        actions: widget.contextMenuItems.map((menu) {
+                          return CupertinoContextMenuAction(
+                            isDefaultAction: menu.isDefaultAction,
+                            isDestructiveAction: menu.isDestructiveAction,
+                            trailingIcon: menu.icon,
+                            onPressed: () {
+                              if (widget.onContextMenu != null) {
+                                widget.onContextMenu!(
+                                  menu.id,
+                                  item,
+                                );
+                              }
+                            },
+                            child: Text(menu.title),
+                          );
+                        }).toList(),
+                        child: SizedBox(
+                          width: itemWidth,
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxHeight: listHeight,
+                            ),
+                            child: widget.service.renderCard(
+                              item,
+                              "${index}_${widget.heroPrefix}",
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.items.length,
+                  ),
+                ),
+              ),
+            ),
+          if (widget.isLoadingMore)
+            SliverToBoxAdapter(
+              child: SpinnerCards(
+                isWide: widget.isWide,
+              ),
+            ),
+        ],
         SliverPadding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).padding.bottom,

@@ -66,57 +66,51 @@ class _StremioItemPageState extends State<StremioItemPage> {
   void initState() {
     super.initState();
 
-    if (widget.meta?.progress != null || widget.meta?.nextEpisode != null) {
-      Future.delayed(
+    if (widget.meta?.currentVideo != null) {
+      openVideo();
+    }
+  }
+
+  openVideo() async {
+    if (widget.meta != null && widget.service != null) {
+      await Future.delayed(
         const Duration(milliseconds: 500),
-        () {
-          if (widget.meta != null && widget.service != null) {
-            if (mounted) {
-              final season = widget.meta?.nextSeason == null
-                  ? ""
-                  : "S${widget.meta?.nextSeason}";
-
-              final episode = widget.meta?.nextEpisode == null
-                  ? ""
-                  : "E${widget.meta?.nextEpisode}";
-
-              showModalBottomSheet(
-                context: context,
-                builder: (context) {
-                  return Scaffold(
-                    appBar: AppBar(
-                      leading: IconButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
-                      title: Text(
-                        "Streams  $season $episode".trim(),
-                      ),
-                    ),
-                    body: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 14.0),
-                        child: RenderStreamList(
-                          progress: widget.meta!.progress != null
-                              ? widget.meta!.progress! * 100
-                              : null,
-                          service: widget.service!,
-                          id: widget.meta as LibraryItem,
-                          season: widget.meta?.nextSeason?.toString(),
-                          episode: widget.meta?.nextEpisode?.toString(),
-                          shouldPop: false,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            }
-          }
-        },
       );
+
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          builder: (context) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+                title: Text(
+                  "Streams S${widget.meta?.currentVideo?.season ?? 0} E${widget.meta?.currentVideo?.episode ?? 0}"
+                      .trim(),
+                ),
+              ),
+              body: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 14.0),
+                  child: RenderStreamList(
+                    progress: widget.meta!.progress != null
+                        ? widget.meta!.progress! * 100
+                        : null,
+                    service: widget.service!,
+                    id: widget.meta as LibraryItem,
+                    shouldPop: false,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
     }
   }
 
@@ -160,7 +154,8 @@ class _StremioItemPageState extends State<StremioItemPage> {
 
         return StremioItemViewer(
           hero: widget.hero,
-          meta: meta ?? widget.meta,
+          meta: (meta ?? widget.meta)
+              ?.copyWith(selectedVideoIndex: widget.meta?.selectedVideoIndex),
           original: meta,
           progress: widget.meta?.progress != null ? widget.meta!.progress : 0,
           service: state.data == null

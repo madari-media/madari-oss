@@ -105,8 +105,6 @@ abstract class BaseConnectionService {
 
   Future<void> getStreams(
     LibraryItem id, {
-    String? season,
-    String? episode,
     OnStreamCallback? callback,
   });
 

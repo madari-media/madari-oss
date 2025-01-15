@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_query/cached_query.dart';
-import 'package:cached_storage/cached_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_client/utils/common.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../../engine/connection_type.dart';
 import '../../../engine/engine.dart';
@@ -21,21 +22,11 @@ class TraktService {
   static const String _baseUrl = 'https://api.trakt.tv';
   static const String _apiVersion = '2';
 
-  static const int _authedPostLimit = 100;
-  static const int _authedGetLimit = 1000;
-  static const Duration _rateLimitWindow = Duration(minutes: 5);
-
-  static const Duration _cacheRevalidationInterval = Duration(
-    hours: 1,
-  );
+  final refetchKey = BehaviorSubject<List<String>>();
 
   static TraktService? _instance;
   static TraktService? get instance => _instance;
   static BaseConnectionService? stremioService;
-
-  int _postRequestCount = 0;
-  int _getRequestCount = 0;
-  DateTime _lastRateLimitReset = DateTime.now();
 
   Map<String, dynamic> _cache = {};
 
@@ -50,7 +41,91 @@ class TraktService {
     );
   }
 
-  Timer? _cacheRevalidationTimer;
+  Future<void> removeFromContinueWatching(String id) async {
+    if (!isEnabled()) {
+      _logger.info('Trakt integration is not enabled');
+      return;
+    }
+
+    try {
+      _logger.info(
+        'Removing item from history (continue watching): $id',
+      );
+
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/sync/playback/$id'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 204) {
+        _logger.severe(
+          'Failed to remove item from history: ${response.statusCode} $id',
+        );
+        throw Exception('Failed to remove item from history');
+      }
+
+      _cache.remove('$_baseUrl/sync/watched/shows');
+      _cache.remove('$_baseUrl/sync/playback');
+
+      refetchKey.add(["continue_watching", "up_next_series"]);
+
+      _logger.info(
+        'Successfully removed item from history (continue watching)',
+      );
+    } catch (e, stack) {
+      _logger.severe('Error removing item from history: $e', stack);
+      rethrow;
+    }
+  }
+
+  Future<void> removeFromWatchlist(Meta meta) async {
+    if (!isEnabled()) {
+      _logger.info('Trakt integration is not enabled');
+      return;
+    }
+
+    try {
+      _logger.info('Removing item from watchlist: ${meta.id}');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/sync/watchlist/remove'),
+        headers: headers,
+        body: json.encode({
+          if (meta.type == "movie")
+            'movies': [
+              {
+                'ids': {
+                  'imdb': meta.id,
+                },
+              },
+            ],
+          if (meta.type == "shows")
+            'shows': [
+              {
+                'ids': {
+                  'imdb': meta.id,
+                },
+              }
+            ],
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        _logger.severe(
+            'Failed to remove item from watchlist: ${response.statusCode}');
+        throw Exception('Failed to remove item from watchlist');
+      }
+
+      _cache.remove('$_baseUrl/sync/watchlist');
+
+      refetchKey.add(["watchlist"]);
+
+      _logger.info('Successfully removed item from watchlist');
+    } catch (e, stack) {
+      _logger.severe('Error removing item from watchlist: $e', stack);
+      rethrow;
+    }
+  }
 
   clearCache() {
     _logger.info('Clearing cache');
@@ -65,9 +140,8 @@ class TraktService {
 
     _logger.info('Initializing TraktService');
 
-    final result = await CachedQuery.instance.storage?.get(
-      "trakt_integration_cache",
-    );
+    final result =
+        await CachedQuery.instance.storage?.get("trakt_integration_cache");
 
     AppEngine.engine.pb.authStore.onChange.listen((item) {
       if (!AppEngine.engine.pb.authStore.isValid) {
@@ -82,7 +156,6 @@ class TraktService {
 
     _instance?._cache = result?.data ?? {};
 
-    // Start cache revalidation timer
     _instance!._startCacheRevalidation();
   }
 
@@ -133,56 +206,13 @@ class TraktService {
 
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
-        'Accept-Content': 'application/json',
         'trakt-api-version': _apiVersion,
         'trakt-api-key': _traktClient,
         'Authorization': 'Bearer $_token',
       };
 
-  Future<void> _checkRateLimit(String method) async {
-    final now = DateTime.now();
-    if (now.difference(_lastRateLimitReset) > _rateLimitWindow) {
-      _postRequestCount = 0;
-      _getRequestCount = 0;
-      _lastRateLimitReset = now;
-    }
-
-    if (method == 'GET') {
-      if (_getRequestCount >= _authedGetLimit) {
-        _logger.severe('GET rate limit exceeded');
-        throw Exception('GET rate limit exceeded');
-      }
-      _getRequestCount++;
-    } else if (method == 'POST' || method == 'PUT' || method == 'DELETE') {
-      if (_postRequestCount >= _authedPostLimit) {
-        _logger.severe('POST/PUT/DELETE rate limit exceeded');
-        throw Exception('POST/PUT/DELETE rate limit exceeded');
-      }
-      _postRequestCount++;
-    }
-  }
-
   void _startCacheRevalidation() {
     _logger.info('Starting cache revalidation timer');
-    _cacheRevalidationTimer = Timer.periodic(
-      _cacheRevalidationInterval,
-      (_) async {
-        await _revalidateCache();
-      },
-    );
-  }
-
-  Future<void> _revalidateCache() async {
-    _logger.info('Revalidating cache');
-    for (final key in _cache.keys) {
-      final cachedData = _cache[key];
-      if (cachedData != null) {
-        final updatedData = await _makeRequest(key, bypassCache: true);
-        _cache[key] = updatedData;
-      }
-    }
-
-    saveCacheToDisk();
   }
 
   Future<dynamic> _makeRequest(String url, {bool bypassCache = false}) async {
@@ -190,8 +220,6 @@ class TraktService {
       _logger.fine('Returning cached data for $url');
       return _cache[url];
     }
-
-    await _checkRateLimit('GET');
 
     _logger.info('Making GET request to $url');
     final response = await http.get(Uri.parse(url), headers: headers);
@@ -218,34 +246,56 @@ class TraktService {
           'year': meta.year,
           'ids': {
             'imdb': meta.imdbId ?? meta.id,
-            ...(meta.externalIds ?? {}),
+            if (meta.tvdbId != null) 'tvdb': meta.tvdbId,
           },
         },
       };
     } else {
+      if (meta.currentVideo?.tvdbId != null) {
+        return {
+          "episode": {
+            "ids": {
+              "tvdb": meta.currentVideo?.tvdbId!,
+            },
+          },
+        };
+      }
+
+      if (meta.currentVideo?.season != null &&
+          meta.currentVideo?.episode != null) {
+        return {
+          "episode": {
+            "season": meta.currentVideo!.season,
+            "episode": meta.currentVideo!.episode,
+          },
+          "show": {
+            "ids": {
+              "imdb": meta.imdbId ?? meta.id,
+            }
+          },
+        };
+      }
+
       return {
-        "show": {
-          "title": meta.name,
-          "year": meta.year,
-          "ids": {
-            "imdb": meta.imdbId ?? meta.id,
-            ...(meta.externalIds ?? {}),
-          }
-        },
         "episode": {
-          "season": meta.nextSeason,
-          "number": meta.nextEpisode,
-        },
+          "ids": {
+            "imdb": meta.currentVideo?.id ?? meta.id,
+          }
+        }
       };
     }
   }
 
-  Future<List<LibraryItem>> getUpNextSeries() async {
+  Stream<List<LibraryItem>> getUpNextSeries({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async* {
     await initStremioService();
 
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
-      return [];
+      yield [];
+      return;
     }
 
     try {
@@ -254,7 +304,28 @@ class TraktService {
         '$_baseUrl/sync/watched/shows',
       );
 
-      final progressFutures = watchedShows.map((show) async {
+      if (watchedShows.isEmpty) {
+        return;
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, watchedShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, watchedShows.length - 1);
+
+      final items = watchedShows.toList();
+
+      if (startIndex >= items.length) {
+        yield [];
+        return;
+      }
+
+      final paginatedItems = items.sublist(
+        startIndex,
+        endIndex > items.length ? items.length : endIndex,
+      );
+
+      final progressFutures = paginatedItems.map((show) async {
         final showId = show['show']['ids']['trakt'];
         final imdb = show['show']['ids']['imdb'];
 
@@ -270,20 +341,17 @@ class TraktService {
               Meta(
                 type: "series",
                 id: imdb,
-                externalIds: show['show']['ids'],
               ),
             );
 
-            item as Meta;
-
-            return item.copyWith(
-              nextEpisode: nextEpisode['number'],
-              nextSeason: nextEpisode['season'],
-              nextEpisodeTitle: nextEpisode['title'],
-            );
+            return patchMetaObjectForShow(item as Meta, nextEpisode);
           }
-        } catch (e) {
-          _logger.severe('Error fetching progress for show $showId: $e');
+        } catch (e, stack) {
+          _logger.severe(
+            'Error fetching progress for show $showId: $e',
+            e,
+            stack,
+          );
           return null;
         }
 
@@ -291,15 +359,100 @@ class TraktService {
       }).toList();
 
       final results = await Future.wait(progressFutures);
+      final validResults = results.whereType<Meta>().toList();
 
-      return results.whereType<Meta>().toList();
+      final paginatedResults = validResults;
+
+      yield paginatedResults;
     } catch (e, stack) {
       _logger.severe('Error fetching up next episodes: $e', stack);
-      return [];
+      yield [];
     }
   }
 
-  Future<List<LibraryItem>> getContinueWatching() async {
+  Meta patchMetaObjectForShow(
+    Meta meta,
+    dynamic obj, {
+    double? progress,
+  }) {
+    if (meta.videos?.isEmpty == true) {
+      meta.videos = [];
+      meta.videos?.add(
+        Video(
+          season: obj['season'],
+          number: obj['number'],
+          thumbnail: meta.poster,
+          id: _traktIdsToMetaId(obj['ids']),
+        ),
+      );
+      return meta;
+    }
+
+    final videoIndexByTvDB = meta.videos?.firstWhereOrNull((item) {
+      return item.tvdbId == obj['ids']['tvdb'] && item.tvdbId != null;
+    });
+
+    final videoBySeasonOrEpisode = meta.videos?.firstWhereOrNull((item) {
+      return item.season == obj['season'] && item.episode == obj['number'];
+    });
+
+    final video = videoIndexByTvDB ?? videoBySeasonOrEpisode;
+
+    if (video == null) {
+      final id = _traktIdsToMetaId(obj['ids']);
+
+      meta.videos = meta.videos ?? [];
+
+      meta.videos?.add(
+        Video(
+          name: obj['title'],
+          season: obj['season'],
+          number: obj['number'],
+          thumbnail: meta.poster,
+          id: id,
+          episode: obj['number'],
+        ),
+      );
+
+      final videosIndex = meta.videos?.length ?? 1;
+
+      return meta.copyWith(
+        selectedVideoIndex: videosIndex - 1,
+      );
+    }
+
+    final index = meta.videos?.indexOf(video);
+
+    meta.videos![index!].name = obj['title'];
+    meta.videos![index].tvdbId =
+        meta.videos![index].tvdbId ?? obj['ids']['tvdb'];
+    meta.videos![index].ids = obj['ids'];
+
+    return meta.copyWith(
+      selectedVideoIndex: index,
+    );
+  }
+
+  String _traktIdsToMetaId(dynamic ids) {
+    String id;
+
+    if (ids['imdb'] != null) {
+      id = ids['imdb'];
+    } else if (ids['tmdb'] != null) {
+      id = "tmdb:${ids['tmdb']}";
+    } else if (ids['trakt']) {
+      id = "trakt:${ids['trakt']}";
+    } else {
+      id = "na";
+    }
+
+    return id;
+  }
+
+  Future<List<LibraryItem>> getContinueWatching({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -309,109 +462,84 @@ class TraktService {
 
     try {
       _logger.info('Fetching continue watching');
-      final continueWatching = await _makeRequest('$_baseUrl/sync/playback');
+      final List<dynamic> continueWatching =
+          await _makeRequest('$_baseUrl/sync/playback');
 
-      final Map<String, double> progress = {};
+      if (continueWatching.isEmpty) {
+        return [];
+      }
 
-      final result = await stremioService!.getBulkItem(
-        continueWatching
-            .map((movie) {
-              try {
-                if (movie['type'] == 'episode') {
-                  progress[movie['show']['ids']['imdb']] = movie['progress'];
+      continueWatching.sort((v2, v1) => DateTime.parse(v1["paused_at"])
+          .compareTo(DateTime.parse(v2["paused_at"])));
 
-                  return Meta(
-                    type: "series",
-                    id: movie['show']['ids']['imdb'],
-                    progress: movie['progress'],
-                    nextSeason: movie['episode']['season'],
-                    nextEpisode: movie['episode']['number'],
-                    nextEpisodeTitle: movie['episode']['title'],
-                  );
-                }
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, continueWatching.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, continueWatching.length - 1);
 
-                final imdb = movie['movie']['ids']['imdb'];
-                progress[imdb] = movie['progress'];
+      if (startIndex >= continueWatching.length) {
+        return [];
+      }
 
-                return Meta(
-                  type: "movie",
-                  id: imdb,
-                  progress: movie['progress'],
-                );
-              } catch (e) {
-                _logger.warning('Error mapping movie: $e');
-                return null;
-              }
-            })
-            .whereType<Meta>()
-            .toList(),
-      );
+      final metaList = (await Future.wait(continueWatching
+              .sublist(
+        startIndex,
+        endIndex,
+      )
+              .map((movie) async {
+        try {
+          if (movie['type'] == 'episode') {
+            final meta = Meta(
+              type: "series",
+              id: _traktIdsToMetaId(
+                movie['show']['ids'],
+              ),
+            );
 
-      return result.map((res) {
-        Meta returnValue = res as Meta;
+            return patchMetaObjectForShow(
+              (await stremioService!.getItemById(meta) as Meta),
+              movie['episode'],
+            ).copyWith(
+              forceRegular: true,
+              progress: movie['progress'],
+              traktProgressId: movie['id'],
+            );
+          }
 
-        if (progress.containsKey(res.id)) {
-          returnValue = res.copyWith(
-            progress: progress[res.id],
+          final movieId = _traktIdsToMetaId(movie['movie']['ids']);
+
+          final meta = Meta(
+            type: "movie",
+            id: movieId,
           );
-        }
 
-        if (res.type == "series") {
-          return returnValue.copyWith();
+          return ((await stremioService!.getItemById(meta)) as Meta).copyWith(
+            progress: movie['progress'],
+            traktProgressId: movie['id'],
+          );
+        } catch (e, stack) {
+          _logger.warning(
+            'Error mapping movie: $e',
+            e,
+            stack,
+          );
+          return null;
         }
+      })))
+          .whereType<Meta>()
+          .toList();
 
-        return returnValue;
-      }).toList();
+      return metaList;
     } catch (e, stack) {
       _logger.severe('Error fetching continue watching: $e', stack);
       return [];
     }
   }
 
-  Future<void> _retryPostRequest(
-    String cacheKey,
-    String url,
-    Map<String, dynamic> body, {
-    int retryCount = 2,
+  Future<List<LibraryItem>> getUpcomingSchedule({
+    int page = 1,
+    int itemsPerPage = 5,
   }) async {
-    for (int i = 0; i < retryCount; i++) {
-      try {
-        await _checkRateLimit('POST');
-
-        _logger.info('Making POST request to $url');
-        final response = await http.post(
-          Uri.parse(url),
-          headers: headers,
-          body: json.encode(body),
-        );
-
-        if (response.statusCode == 201) {
-          _logger.info('POST request successful');
-          return;
-        } else if (response.statusCode == 429) {
-          _logger.warning('Rate limit hit, retrying...');
-          await Future.delayed(Duration(seconds: 10));
-          continue;
-        } else {
-          _logger.severe('Failed to make POST request: ${response.statusCode}');
-          throw Exception(
-              'Failed to make POST request: ${response.statusCode}');
-        }
-      } catch (e) {
-        if (i == retryCount - 1) {
-          _logger
-              .severe('Failed to make POST request after $retryCount attempts');
-          if (_cache.containsKey(cacheKey)) {
-            _logger.info('Returning cached data');
-            return _cache[cacheKey];
-          }
-          rethrow;
-        }
-      }
-    }
-  }
-
-  Future<List<LibraryItem>> getUpcomingSchedule() async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -425,23 +553,50 @@ class TraktService {
         '$_baseUrl/calendars/my/shows/${DateFormat('yyyy-MM-dd').format(DateTime.now())}/7',
       );
 
-      final result = await stremioService!.getBulkItem(
-        scheduleShows
-            .map((show) {
-              try {
-                final imdb = show['show']['ids']['imdb'];
-                return Meta(
-                  type: "series",
-                  id: imdb,
-                );
-              } catch (e) {
-                _logger.warning('Error mapping show: $e');
-                return null;
-              }
-            })
-            .whereType<Meta>()
-            .toList(),
-      );
+      if (scheduleShows.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, scheduleShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, scheduleShows.length - 1);
+
+      if (startIndex >= scheduleShows.length) {
+        return [];
+      }
+
+      final result = (await Future.wait(scheduleShows
+              .sublist(
+        startIndex,
+        endIndex > scheduleShows.length ? scheduleShows.length : endIndex,
+      )
+              .map((show) async {
+        try {
+          final imdb = _traktIdsToMetaId(
+            show['show']['ids'],
+          );
+
+          final result = Meta(
+            type: "series",
+            id: imdb,
+          );
+
+          final item = await stremioService!.getItemById(result);
+
+          return patchMetaObjectForShow(
+            (item ?? result) as Meta,
+            show['episode'],
+          ).copyWith(
+            progress: null,
+          );
+        } catch (e) {
+          _logger.warning('Error mapping show: $e');
+          return null;
+        }
+      })))
+          .whereType<Meta>()
+          .toList();
 
       return result;
     } catch (e, stack) {
@@ -450,7 +605,8 @@ class TraktService {
     }
   }
 
-  Future<List<LibraryItem>> getWatchlist() async {
+  Future<List<LibraryItem>> getWatchlist(
+      {int page = 1, int itemsPerPage = 5}) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -460,14 +616,35 @@ class TraktService {
 
     try {
       _logger.info('Fetching watchlist');
-      final watchlistItems = await _makeRequest('$_baseUrl/sync/watchlist');
+      final List<dynamic> watchlistItems =
+          await _makeRequest('$_baseUrl/sync/watchlist');
+      _logger.info('Got watchlist');
+
+      if (watchlistItems.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, watchlistItems.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, watchlistItems.length - 1);
+
+      if (startIndex >= watchlistItems.length) {
+        return [];
+      }
 
       final result = await stremioService!.getBulkItem(
         watchlistItems
+            .sublist(
+              startIndex,
+              endIndex > watchlistItems.length
+                  ? watchlistItems.length
+                  : endIndex,
+            )
             .map((item) {
               try {
                 final type = item['type'];
-                final imdb = item[type]['ids']['imdb'];
+                final imdb = _traktIdsToMetaId(item[type]['ids']);
 
                 if (type == "show") {
                   return Meta(
@@ -480,8 +657,8 @@ class TraktService {
                   type: type,
                   id: imdb,
                 );
-              } catch (e) {
-                _logger.warning('Error mapping watchlist item: $e');
+              } catch (e, stack) {
+                _logger.warning('Error mapping watchlist item: $e', e, stack);
                 return null;
               }
             })
@@ -496,7 +673,10 @@ class TraktService {
     }
   }
 
-  Future<List<LibraryItem>> getShowRecommendations() async {
+  Future<List<LibraryItem>> getShowRecommendations({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -506,17 +686,33 @@ class TraktService {
 
     try {
       _logger.info('Fetching show recommendations');
-      final recommendedShows =
-          await _makeRequest('$_baseUrl/recommendations/shows');
+      final List<dynamic> recommendedShows = await _makeRequest(
+        '$_baseUrl/recommendations/shows',
+      );
+
+      if (recommendedShows.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, recommendedShows.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, recommendedShows.length - 1);
+
+      if (startIndex >= recommendedShows.length) {
+        return [];
+      }
 
       final result = (await stremioService!.getBulkItem(
         recommendedShows
+            .sublist(
+              startIndex,
+              endIndex > recommendedShows.length
+                  ? recommendedShows.length
+                  : endIndex,
+            )
             .map((show) {
-              final imdb = show['ids']?['imdb'];
-
-              if (imdb == null) {
-                return null;
-              }
+              final imdb = _traktIdsToMetaId(show['ids']);
 
               return Meta(
                 type: "series",
@@ -534,7 +730,10 @@ class TraktService {
     }
   }
 
-  Future<List<LibraryItem>> getMovieRecommendations() async {
+  Future<List<LibraryItem>> getMovieRecommendations({
+    int page = 1,
+    int itemsPerPage = 5,
+  }) async {
     await initStremioService();
 
     if (!isEnabled()) {
@@ -544,14 +743,34 @@ class TraktService {
 
     try {
       _logger.info('Fetching movie recommendations');
-      final recommendedMovies =
-          await _makeRequest('$_baseUrl/recommendations/movies');
+      final List<dynamic> recommendedMovies = await _makeRequest(
+        '$_baseUrl/recommendations/movies',
+      );
+
+      if (recommendedMovies.isEmpty) {
+        return [];
+      }
+
+      final startIndex =
+          ((page - 1) * itemsPerPage).clamp(0, recommendedMovies.length - 1);
+      final endIndex =
+          (startIndex + itemsPerPage).clamp(0, recommendedMovies.length - 1);
+
+      if (startIndex >= recommendedMovies.length) {
+        return [];
+      }
 
       final result = await stremioService!.getBulkItem(
         recommendedMovies
+            .sublist(
+              startIndex,
+              endIndex > recommendedMovies.length
+                  ? recommendedMovies.length
+                  : endIndex,
+            )
             .map((movie) {
               try {
-                final imdb = movie['ids']['imdb'];
+                final imdb = _traktIdsToMetaId(movie['ids']);
                 return Meta(
                   type: "movie",
                   id: imdb,
@@ -587,7 +806,7 @@ class TraktService {
     return config;
   }
 
-  bool isEnabled() {
+  static bool isEnabled() {
     return AppEngine.engine.pb.authStore.record!
             .getStringValue("trakt_token") !=
         "";
@@ -624,10 +843,9 @@ class TraktService {
       return;
     }
 
-    await _checkRateLimit('POST');
-
     try {
       _logger.info('Starting scrobbling for ${meta.type} with ID: ${meta.id}');
+
       final response = await http.post(
         Uri.parse('$_baseUrl/scrobble/start'),
         headers: headers,
@@ -636,6 +854,12 @@ class TraktService {
           ..._buildObjectForMeta(meta),
         }),
       );
+
+      if (response.statusCode == 404) {
+        _logger.severe('Failed to start scrobbling: ${response.statusCode}');
+        _logger.severe("${_buildObjectForMeta(meta)}");
+        return;
+      }
 
       if (response.statusCode != 201) {
         _logger.severe('Failed to start scrobbling: ${response.statusCode}');
@@ -683,9 +907,57 @@ class TraktService {
     }
   }
 
+  Future<void> _retryPostRequest(
+    String cacheKey,
+    String url,
+    Map<String, dynamic> body, {
+    int retryCount = 2,
+  }) async {
+    for (int i = 0; i < retryCount; i++) {
+      try {
+        _logger.info('Making POST request to $url');
+        final response = await http.post(
+          Uri.parse(url),
+          headers: headers,
+          body: json.encode(body),
+        );
+
+        if (response.statusCode == 404) {
+          _logger.warning('could not find episode');
+        } else if (response.statusCode == 201) {
+          _logger.info('POST request successful');
+          return;
+        } else if (response.statusCode == 429) {
+          _logger.warning('Rate limit hit, retrying...');
+          await Future.delayed(
+            const Duration(seconds: 10),
+          );
+          continue;
+        } else {
+          _logger.severe('Failed to make POST request: ${response.statusCode}');
+          throw Exception(
+            'Failed to make POST request: ${response.statusCode}',
+          );
+        }
+      } catch (e) {
+        if (i == retryCount - 1) {
+          _logger
+              .severe('Failed to make POST request after $retryCount attempts');
+          if (_cache.containsKey(cacheKey)) {
+            _logger.info('Returning cached data');
+            return _cache[cacheKey];
+          }
+          rethrow;
+        }
+      }
+    }
+  }
+
   Future<void> stopScrobbling({
     required Meta meta,
     required double progress,
+    bool shouldClearCache = false,
+    int? traktId,
   }) async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
@@ -699,6 +971,7 @@ class TraktService {
 
     try {
       _logger.info('Stopping scrobbling for ${meta.type} with ID: ${meta.id}');
+      _logger.info(_buildObjectForMeta(meta));
       await _retryPostRequest(
         cacheKey,
         '$_baseUrl/scrobble/stop',
@@ -708,8 +981,21 @@ class TraktService {
         },
       );
 
-      _cache.remove('$_baseUrl/sync/watched/shows');
-      _cache.remove('$_baseUrl/sync/playback');
+      if (shouldClearCache) {
+        _cache.remove('$_baseUrl/sync/watched/shows');
+        _cache.remove('$_baseUrl/sync/playback');
+
+        final keys = [
+          if (traktId != null) "$_baseUrl/shows/$traktId/progress/watched",
+          "continue_watching",
+          if (meta.type == "series") "up_next_series",
+        ];
+        refetchKey.add(keys);
+
+        _logger.info(
+          "pushing refetch key ${keys.join(", ")} still in cache ${_cache.keys.join(", ")}",
+        );
+      }
     } catch (e, stack) {
       _logger.severe('Error stopping scrobbling: $e', stack);
       rethrow;
@@ -718,56 +1004,60 @@ class TraktService {
     }
   }
 
-  Future<List<TraktProgress>> getProgress(Meta meta) async {
+  Future<Meta> getProgress(
+    Meta meta, {
+    bool bypassCache = true,
+  }) async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
-      return [];
+      return meta;
     }
 
     try {
       if (meta.type == "series") {
-        final body = await _makeRequest("$_baseUrl/sync/playback/episodes");
-
-        final List<TraktProgress> result = [];
+        final List<dynamic> body = await _makeRequest(
+          "$_baseUrl/sync/playback/episodes",
+          bypassCache: bypassCache,
+        );
 
         for (final item in body) {
-          if (item["type"] != "episode") {
+          final isCurrentShow =
+              item["show"]?["ids"]?["imdb"] == (meta.imdbId ?? meta.id);
+
+          if (isCurrentShow == false) {
             continue;
           }
 
-          final isShow =
-              item["show"]["ids"]["imdb"] == (meta.imdbId ?? meta.id);
+          meta.videos = meta.videos ?? [];
 
-          final currentEpisode = item["episode"]["number"];
-          final currentSeason = item["episode"]["season"];
-
-          if (isShow && meta.nextEpisode != null && meta.nextSeason != null) {
-            if (meta.nextSeason == currentSeason &&
-                meta.nextEpisode == currentEpisode) {
-              result.add(
-                TraktProgress(
-                  id: meta.id,
-                  progress: item["progress"]!,
-                  episode: currentEpisode,
-                  season: currentSeason,
-                ),
-              );
+          final result = meta.videos?.firstWhereOrNull((video) {
+            if (video.tvdbId != null &&
+                item['episode']['ids']['tvdb'] != null) {
+              return video.tvdbId == item['episode']['ids']['tvdb'];
             }
-          } else if (isShow) {
-            result.add(
-              TraktProgress(
-                id: meta.id,
-                progress: item["progress"]!,
-                episode: currentEpisode,
-                season: currentSeason,
-              ),
-            );
-          }
-        }
 
-        return result;
+            return video.season == item['season'] &&
+                video.number == item['number'];
+          });
+
+          if (result == null) {
+            continue;
+          }
+
+          final videoIndex = meta.videos!.indexOf(result);
+
+          meta.videos![videoIndex].progress = item['progress'];
+
+          _logger.info(
+            "Setting progress for ${meta.videos![videoIndex].name} to ${item['progress']}",
+          );
+        }
+        return meta;
       } else {
-        final body = await _makeRequest("$_baseUrl/sync/playback/movies");
+        final body = await _makeRequest(
+          "$_baseUrl/sync/playback/movies",
+          bypassCache: true,
+        );
 
         for (final item in body) {
           if (item["type"] != "movie") {
@@ -775,36 +1065,17 @@ class TraktService {
           }
 
           if (item["movie"]["ids"]["imdb"] == (meta.imdbId ?? meta.id)) {
-            return [
-              TraktProgress(
-                id: item["movie"]["ids"]["imdb"],
-                progress: item["progress"],
-              ),
-            ];
+            return meta.copyWith(
+              progress: item["progress"],
+            );
           }
         }
       }
     } catch (e) {
       _logger.severe('Error fetching progress: $e');
-      return [];
+      return meta;
     }
 
-    return [];
+    return meta;
   }
 }
-
-class TraktProgress {
-  final String id;
-  final int? episode;
-  final int? season;
-  final double progress;
-
-  TraktProgress({
-    required this.id,
-    this.episode,
-    this.season,
-    required this.progress,
-  });
-}
-
-extension StaticInstance on CachedStorage {}

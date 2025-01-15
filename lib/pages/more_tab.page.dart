@@ -9,6 +9,7 @@ import 'package:madari_client/pages/sign_in.page.dart';
 
 import '../features/settings/screen/account_screen.dart';
 import '../features/settings/screen/connection_screen.dart';
+import '../features/settings/screen/logs_screen.dart';
 import '../features/settings/screen/playback_settings_screen.dart';
 import '../features/settings/screen/profile_button.dart';
 
@@ -75,6 +76,35 @@ class MoreContainer extends StatelessWidget {
                   builder: (context) => const TraktIntegration(),
                 ),
               ),
+            ),
+            _buildListHeader('Debug'),
+            ListTile(
+              leading: const Icon(Icons.text_snippet),
+              title: const Text("Show logs"),
+              onTap: () async {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return const LogsPage();
+                    },
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.clear),
+              title: const Text("Clear Local Watch History"),
+              onTap: () async {
+                await ZeeeWatchHistoryStatic.service?.clear();
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Removed local watch history"),
+                    ),
+                  );
+                }
+              },
             ),
             ListTile(
               leading: const Icon(Icons.clear_all),

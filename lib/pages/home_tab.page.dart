@@ -35,7 +35,14 @@ class HomeTabPage extends StatefulWidget {
 class _HomeTabPageState extends State<HomeTabPage> {
   late final query = Query(
     queryFn: () async {
-      await TraktService.ensureInitialized();
+      try {
+        if (TraktService.isEnabled() == true) {
+          await TraktService.ensureInitialized();
+        }
+      } catch (e, stack) {
+        print(e);
+        print(stack);
+      }
 
       if (widget.defaultLibraries != null) {
         return Future.value(
@@ -67,7 +74,11 @@ class _HomeTabPageState extends State<HomeTabPage> {
 
       if (state == null) continue;
 
-      promises.add(state.refresh());
+      promises.add(() async {
+        try {
+          state.refresh();
+        } catch (e) {}
+      }());
     }
 
     await Future.wait(promises);
@@ -132,7 +143,9 @@ class _HomeTabPageState extends State<HomeTabPage> {
               ],
             ),
       body: RefreshIndicator(
-        onRefresh: () async {},
+        onRefresh: () async {
+          return reloadPage();
+        },
         child: QueryBuilder(
           query: query,
           builder: (context, state) {
@@ -146,7 +159,7 @@ class _HomeTabPageState extends State<HomeTabPage> {
               return const Text("Loading");
             }
 
-            if (data.data.isEmpty) {
+            if (data.data.isEmpty && widget.defaultLibraries != null) {
               return Padding(
                 padding: const EdgeInsets.only(
                   bottom: 24,
@@ -171,6 +184,8 @@ class _HomeTabPageState extends State<HomeTabPage> {
               );
             }
 
+            final mediaQuery = MediaQuery.of(context).size.width;
+
             return Padding(
               padding: const EdgeInsets.symmetric(
                 vertical: 8.0,
@@ -183,6 +198,8 @@ class _HomeTabPageState extends State<HomeTabPage> {
 
                     return TraktContainer(
                       key: _getKey(index),
+                      itemsPerPage:
+                          (mediaQuery / getItemWidth(context)).toInt() + 1,
                       loadId: category,
                     );
                   }

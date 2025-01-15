@@ -6,6 +6,7 @@ import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 import 'package:madari_client/features/connections/widget/base/render_stream_list.dart';
 import 'package:madari_client/features/trakt/service/trakt.service.dart';
+import 'package:madari_client/utils/common.dart';
 
 import '../../../doc_viewer/types/doc_source.dart';
 import '../../../watch_history/service/base_watch_history.dart';
@@ -37,53 +38,64 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
   late final Map<int, List<Video>> seasonMap;
   final zeeeWatchHistory = ZeeeWatchHistoryStatic.service;
 
+  late Meta meta = widget.meta;
+
   final Map<String, double> _progress = {};
-  final Map<int, Map<int, double>> _traktProgress = {};
 
   @override
   void initState() {
     super.initState();
 
     seasonMap = _organizeEpisodes();
-    selectedSeason = widget.season;
 
     if (seasonMap.keys.isEmpty) {
       return;
     }
 
+    final index = getSelectedSeason();
+
     _tabController = TabController(
       length: seasonMap.keys.length,
       vsync: this,
-      initialIndex: selectedSeason != null
-          ? selectedSeason! - 1
-          : (seasonMap.keys.first == 0 ? 1 : 0),
+      initialIndex: index.clamp(
+        0,
+        seasonMap.keys.isNotEmpty ? seasonMap.keys.length - 1 : 0,
+      ),
     );
 
-    _tabController?.addListener(() {
+    // This is for rendering the component again for the selection of another tab
+    _tabController!.addListener(() {
       setState(() {});
     });
 
     getWatchHistory();
   }
 
+  int getSelectedSeason() {
+    return widget.meta.currentVideo?.season ??
+        widget.meta.videos?.lastWhereOrNull((item) {
+          return item.progress != null;
+        })?.season ??
+        widget.season ??
+        0;
+  }
+
   getWatchHistory() async {
     final traktService = TraktService.instance;
 
     try {
-      if (traktService!.isEnabled()) {
-        final result = await traktService.getProgress(widget.meta);
+      if (TraktService.isEnabled()) {
+        final result = await traktService!.getProgress(
+          widget.meta,
+          bypassCache: false,
+        );
 
-        for (final item in result) {
-          if (!_traktProgress.containsKey(item.season)) {
-            _traktProgress.addAll(<int, Map<int, double>>{
-              item.season!: {},
-            });
-          }
-          _traktProgress[item.season!] = _traktProgress[item.season] ?? {};
-          _traktProgress[item.season]![item.episode!] = item.progress;
-        }
+        setState(() {
+          meta = result;
+        });
 
-        setState(() {});
+        final index = getSelectedSeason();
+        _tabController?.animateTo(index);
 
         return;
       }
@@ -95,7 +107,11 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
 
     final docs = await zeeeWatchHistory!.getItemWatchHistory(
       ids: widget.meta.videos!.map((item) {
-        return WatchHistoryGetRequest(id: item.id);
+        return WatchHistoryGetRequest(
+          id: item.id,
+          episode: item.episode.toString(),
+          season: item.season.toString(),
+        );
       }).toList(),
     );
 
@@ -103,7 +119,9 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
       _progress[item.id] = item.progress.toDouble();
     }
 
-    setState(() {});
+    final index = getSelectedSeason();
+
+    _tabController?.animateTo(index);
   }
 
   @override
@@ -113,13 +131,12 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
   }
 
   Map<int, List<Video>> _organizeEpisodes() {
-    final episodes = widget.meta.videos ?? [];
+    final episodes = meta.videos ?? [];
     return groupBy(episodes, (Video video) => video.season);
   }
 
   void openEpisode({
-    required int currentSeason,
-    required Video episode,
+    required int index,
   }) async {
     if (widget.service == null) {
       return;
@@ -127,18 +144,19 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     final onClose = showModalBottomSheet(
       context: context,
       builder: (context) {
-        final meta = widget.meta.copyWith(
-          id: episode.id,
-        );
+        final meta = this.meta.copyWith(
+              selectedVideoIndex: index,
+            );
 
         return Scaffold(
           appBar: AppBar(
-            title: Text("Streams for S$currentSeason E${episode.episode}"),
+            title: Text(
+              "Streams for S${meta.currentVideo?.season} E${meta.currentVideo?.episode}",
+            ),
           ),
           body: RenderStreamList(
             service: widget.service!,
             id: meta,
-            season: currentSeason.toString(),
             shouldPop: widget.shouldPop,
           ),
         );
@@ -148,7 +166,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     if (widget.shouldPop) {
       final val = await onClose;
 
-      if (val is MediaURLSource && context.mounted) {
+      if (val is MediaURLSource && context.mounted && mounted) {
         Navigator.pop(
           context,
           val,
@@ -213,11 +231,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                           widget.meta.videos!.length,
                         );
 
-                        openEpisode(
-                          currentSeason:
-                              widget.meta.videos![randomIndex].season,
-                          episode: widget.meta.videos![randomIndex],
-                        );
+                        openEpisode(index: randomIndex);
                       },
                     ),
                   ),
@@ -259,19 +273,24 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
                 final episodes = seasonMap[currentSeason]!;
                 final episode = episodes[index];
 
-                final progress = _traktProgress[episode.season]
-                            ?[episode.episode] ==
-                        null
-                    ? (_progress[episode.id] ?? 0) / 100
-                    : (_traktProgress[episode.season]![episode.episode]! / 100);
+                final videoIndex = meta.videos?.indexOf(episode);
+
+                final progress = ((!TraktService.isEnabled()
+                            ? (_progress[episode.id] ?? 0) / 100
+                            : videoIndex != -1
+                                ? (meta.videos![videoIndex!].progress)
+                                : 0.toDouble()) ??
+                        0) /
+                    100;
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
-                    openEpisode(
-                      currentSeason: currentSeason,
-                      episode: episode,
-                    );
+                    if (videoIndex != null) {
+                      openEpisode(
+                        index: videoIndex,
+                      );
+                    }
                   },
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

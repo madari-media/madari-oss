@@ -24,13 +24,13 @@ class _AutoImportState extends State<AutoImport> {
   late StremioService _stremio;
   final List<FolderItem> _selected = [];
   bool _isLoading = false;
+  bool _selectAll = false;
 
   Future<List<FolderItem>>? _folders;
 
   @override
   void initState() {
     super.initState();
-
     initialValueImport();
   }
 
@@ -89,6 +89,21 @@ class _AutoImportState extends State<AutoImport> {
     }
   }
 
+  void toggleSelectAll() async {
+    final folders = await _folders;
+    if (folders == null) return;
+
+    setState(() {
+      _selectAll = !_selectAll;
+      if (_selectAll) {
+        _selected.clear();
+        _selected.addAll(folders);
+      } else {
+        _selected.clear();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,6 +112,17 @@ class _AutoImportState extends State<AutoImport> {
         title: const Text("Import Libraries"),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(
+            icon: Icon(_selectAll
+                ? Icons.check_box_outlined
+                : Icons.check_box_outline_blank),
+            onPressed: () {
+              toggleSelectAll();
+            },
+          ),
+          const SizedBox(
+            width: 12,
+          ),
           ElevatedButton.icon(
             onPressed: _selected.isNotEmpty
                 ? () {
@@ -130,25 +156,28 @@ class _AutoImportState extends State<AutoImport> {
             );
           }
 
-          return ListView.builder(
-            itemCount: snapshot.data?.length ?? 0,
-            itemBuilder: (item, index) {
-              final item = snapshot.data![index];
+          final folders = snapshot.data!;
 
-              final selected =
-                  _selected.where((selected) => selected.id == item.id);
+          return ListView.builder(
+            itemCount: folders.length,
+            itemBuilder: (context, index) {
+              final item = folders[index];
+
+              final isSelected =
+                  _selected.any((selected) => selected.id == item.id);
 
               return ListTile(
                 onTap: () {
                   setState(() {
-                    if (selected.isEmpty) {
-                      _selected.add(item);
+                    if (isSelected) {
+                      _selected
+                          .removeWhere((selected) => selected.id == item.id);
                     } else {
-                      _selected.remove(item);
+                      _selected.add(item);
                     }
                   });
                 },
-                leading: selected.isNotEmpty
+                leading: isSelected
                     ? const Icon(Icons.check)
                     : const Icon(Icons.check_box_outline_blank),
                 title: Text(item.title),

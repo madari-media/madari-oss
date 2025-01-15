@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:madari_client/features/connection/types/stremio.dart';
 import 'package:madari_client/features/connections/service/base_connection_service.dart';
 
-class StremioCard extends StatelessWidget {
+class StremioCard extends StatefulWidget {
   final LibraryItem item;
   final String prefix;
   final String connectionId;
@@ -21,8 +21,13 @@ class StremioCard extends StatelessWidget {
   });
 
   @override
+  State<StremioCard> createState() => _StremioCardState();
+}
+
+class _StremioCardState extends State<StremioCard> {
+  @override
   Widget build(BuildContext context) {
-    final meta = item as Meta;
+    final meta = widget.item as Meta;
 
     return Card(
       margin: const EdgeInsets.only(right: 8),
@@ -36,14 +41,15 @@ class StremioCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: () {
             context.push(
-              "/info/stremio/$connectionId/${meta.type}/${meta.id}?hero=$prefix${meta.type}${item.id}",
+              "/info/stremio/${widget.connectionId}/${meta.type}/${meta.id}?hero=${widget.prefix}${meta.type}${widget.item.id}",
               extra: {
                 'meta': meta,
-                'service': service,
+                'service': widget.service,
               },
             );
           },
-          child: (meta.nextSeason == null || meta.progress != null)
+          child: ((meta.currentVideo == null || meta.progress != null) ||
+                  (meta.forceRegular == true))
               ? _buildRegular(context, meta)
               : _buildWideCard(context, meta),
         ),
@@ -51,195 +57,15 @@ class StremioCard extends StatelessWidget {
     );
   }
 
-  bool get isInFuture {
-    final video = (item as Meta).currentVideo;
-    return video != null &&
-        video.firstAired != null &&
-        video.firstAired!.isAfter(DateTime.now());
-  }
-
   _buildWideCard(BuildContext context, Meta meta) {
-    if (meta.background == null) {
-      return Container();
-    }
-
-    final video = meta.currentVideo;
-
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(
-            "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(
-              meta.currentVideo?.thumbnail ?? meta.background!,
-            )}@webp",
-            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
-          ),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Stack(
-        children: [
-          if (isInFuture)
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black,
-                      Colors.black54,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-            ),
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black,
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.center,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Text(
-                    "${meta.name}",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(
-                    height: 4,
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      "S${meta.nextSeason} E${meta.nextEpisode}",
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.black,
-                          ),
-                    ),
-                  ),
-                  Text(
-                    "${meta.nextEpisodeTitle}".trim(),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isInFuture)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                getRelativeDate(video!.firstAired!),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-          if (isInFuture)
-            const Positioned(
-              bottom: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 10,
-                      ),
-                      child: Icon(
-                        Icons.calendar_month,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const Positioned(
-            child: Center(
-              child: IconButton.filled(
-                onPressed: null,
-                icon: Icon(
-                  Icons.play_arrow,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-          meta.imdbRating != ""
-              ? Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            meta.imdbRating,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ],
-      ),
-    );
+    return WideCardStremio(meta: meta);
   }
 
   String? getBackgroundImage(Meta meta) {
     String? backgroundImage;
 
-    if (meta.nextEpisode != null &&
-        meta.nextSeason != null &&
-        meta.videos != null) {
-      for (final video in meta.videos!) {
-        if (video.season == meta.nextSeason &&
-            video.episode == meta.nextEpisode) {
-          return video.thumbnail ?? meta.poster;
-        }
-      }
+    if (meta.currentVideo != null) {
+      return meta.currentVideo?.thumbnail ?? meta.poster;
     }
 
     if (meta.poster != null) {
@@ -254,7 +80,7 @@ class StremioCard extends StatelessWidget {
         meta.poster ?? meta.logo ?? getBackgroundImage(meta);
 
     return Hero(
-      tag: "$prefix${meta.type}${item.id}",
+      tag: "${widget.prefix}${meta.type}${widget.item.id}",
       child: (backgroundImage == null)
           ? Center(
               child: Column(
@@ -326,7 +152,7 @@ class StremioCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      meta.imdbRating!,
+                                      meta.imdbRating,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
@@ -360,7 +186,7 @@ class StremioCard extends StatelessWidget {
                       minHeight: 5,
                     ),
                   ),
-                if (meta.nextEpisode != null && meta.nextSeason != null)
+                if (meta.currentVideo != null)
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -393,7 +219,7 @@ class StremioCard extends StatelessWidget {
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             Text(
-                              "S${meta.nextSeason} E${meta.nextEpisode}",
+                              "S${meta.currentVideo?.season} E${meta.currentVideo?.episode}",
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -406,6 +232,210 @@ class StremioCard extends StatelessWidget {
                   )
               ],
             ),
+    );
+  }
+}
+
+class WideCardStremio extends StatefulWidget {
+  final Meta meta;
+  final Video? video;
+
+  const WideCardStremio({
+    super.key,
+    required this.meta,
+    this.video,
+  });
+
+  @override
+  State<WideCardStremio> createState() => _WideCardStremioState();
+}
+
+class _WideCardStremioState extends State<WideCardStremio> {
+  bool hasErrorWhileLoading = false;
+
+  bool get isInFuture {
+    final video = widget.video ?? widget.meta.currentVideo;
+    return video != null &&
+        video.firstAired != null &&
+        video.firstAired!.isAfter(DateTime.now());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.meta.background == null) {
+      return Container();
+    }
+
+    final video = widget.video ?? widget.meta.currentVideo;
+
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: CachedNetworkImageProvider(
+            "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(
+              hasErrorWhileLoading
+                  ? widget.meta.background!
+                  : (widget.meta.currentVideo?.thumbnail ??
+                      widget.meta.background!),
+            )}@webp",
+            errorListener: (error) {
+              setState(() {
+                hasErrorWhileLoading = true;
+              });
+            },
+            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
+          ),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Stack(
+        children: [
+          if (isInFuture)
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black,
+                      Colors.black54,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black,
+                    Colors.transparent,
+                  ],
+                  begin: Alignment.bottomLeft,
+                  end: Alignment.center,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(
+                    "${widget.meta.name}",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(
+                    height: 4,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      "S${video?.season} E${video?.episode}",
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.black,
+                          ),
+                    ),
+                  ),
+                  Text(
+                    "${video?.name ?? video?.title}".trim(),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (isInFuture)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                getRelativeDate(video!.firstAired!),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          if (isInFuture)
+            const Positioned(
+              bottom: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 10,
+                      ),
+                      child: Icon(
+                        Icons.calendar_month,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const Positioned(
+            child: Center(
+              child: IconButton.filled(
+                onPressed: null,
+                icon: Icon(
+                  Icons.play_arrow,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          widget.meta.imdbRating != "" && widget.video == null
+              ? Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.star,
+                            color: Colors.amber,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.meta.imdbRating,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 }

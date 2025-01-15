@@ -279,7 +279,9 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                 widget.original?.type == "series" &&
                 widget.original?.videos?.isNotEmpty == true)
               StremioItemSeasonSelector(
-                meta: (item as Meta),
+                meta: (item as Meta).copyWith(
+                  selectedVideoIndex: widget.meta?.selectedVideoIndex,
+                ),
                 service: widget.service,
               ),
             SliverPadding(
@@ -294,7 +296,6 @@ class _StremioItemViewerState extends State<StremioItemViewer> {
                     const SizedBox(
                       height: 12,
                     ),
-                  // Description
                   Text(
                     'Description',
                     style: Theme.of(context).textTheme.titleLarge,
