@@ -194,11 +194,13 @@ class _VideoViewerState extends State<VideoViewer> {
   Future setupVideoThings() async {
     _logger.info('Setting up video things...');
 
-    traktProgress = null;
-    traktProgress = TraktService.instance!.getProgress(
-      meta as types.Meta,
-      bypassCache: true,
-    );
+    if (TraktService.isEnabled()) {
+      traktProgress = null;
+      traktProgress = TraktService.instance!.getProgress(
+        meta as types.Meta,
+        bypassCache: true,
+      );
+    }
 
     _duration = player.stream.duration.listen((item) async {
       if (meta is types.Meta) {
