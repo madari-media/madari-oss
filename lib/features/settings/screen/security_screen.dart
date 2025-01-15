@@ -97,6 +97,7 @@ class _ChangeDialogState extends State<ChangeDialog> {
       await pocketBase.collection('users').update(
         userId,
         body: {
+          'oldPassword': _currentPasswordController.text,
           'password': _newPasswordController.text,
           'passwordConfirm': _confirmPasswordController.text,
         },
