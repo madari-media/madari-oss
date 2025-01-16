@@ -204,6 +204,7 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
 
     onClose.then((data) {
       getWatchHistory();
+      getWatchedHistory();
     });
   }
 
