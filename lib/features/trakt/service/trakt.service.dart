@@ -1079,16 +1079,16 @@ class TraktService {
 
     return meta;
   }
+
   Future<List<TraktShowWatched>> getWatchedShowsWithEpisodes(Meta meta) async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
       return [];
     }
-    if (meta.type == "series" ) {
+    if (meta.type == "series") {
       final watchedShows = await getWatchedShows();
       for (final show in watchedShows) {
-        if(show.ids.imdb==meta.imdbId) {
-          // await Future.delayed(const Duration(seconds: 5));
+        if (show.ids.imdb == meta.imdbId) {
           show.episodes = await _getWatchedEpisodes(show.ids.trakt);
         }
       }
@@ -1096,6 +1096,7 @@ class TraktService {
     }
     return [];
   }
+
   Future<List<TraktShowWatched>> getWatchedShows() async {
     if (!isEnabled()) {
       _logger.info('Trakt integration is not enabled');
@@ -1114,11 +1115,12 @@ class TraktService {
               title: item["show"]["title"],
               seasons: item["seasons"],
               ids: TraktIds.fromJson(item["show"]["ids"]),
-              lastWatchedAt: item["last_watched_at"] != null ? DateTime.parse(item["last_watched_at"]) : null,
+              lastWatchedAt: item["last_watched_at"] != null
+                  ? DateTime.parse(item["last_watched_at"])
+                  : null,
               plays: item["plays"],
             ),
           );
-
         } catch (e, stack) {
           _logger.warning('Error parsing watched show: $e\n$stack item: $item');
         }
@@ -1129,6 +1131,7 @@ class TraktService {
       return [];
     }
   }
+
   Future<List<TraktEpisodeWatched>> _getWatchedEpisodes(int? traktId) async {
     if (traktId == null) return [];
     int page = 1;
@@ -1140,7 +1143,7 @@ class TraktService {
       );
       final List<TraktEpisodeWatched> episodes = [];
       for (final item in body) {
-        if (item['episode'] != null ) {
+        if (item['episode'] != null) {
           episodes.add(
             TraktEpisodeWatched(
               season: item['episode']['season'],

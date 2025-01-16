@@ -56,10 +56,9 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
       int initialSeason = getSelectedSeason();
 
       if (seasons.contains(initialSeason)) {
-        // Check if initialSeason is in seasons
         selectedSeason = initialSeason;
       } else if (seasons.isNotEmpty) {
-        selectedSeason = seasons.first; // Or any other default if not found
+        selectedSeason = seasons.first;
       }
     }
 
@@ -67,47 +66,48 @@ class _StremioItemSeasonSelectorState extends State<StremioItemSeasonSelector>
     getWatchedHistory();
   }
 
-getWatchedHistory() async {
-  final traktService = TraktService.instance;
-  try {
-    final result =
-    await traktService!.getWatchedShowsWithEpisodes(widget.meta);
-    watchedEpisodesBySeason.clear();
-    for (final show in result) {
-      if (show.episodes != null) {
-        for (final episode in show.episodes!) {
-          if (!watchedEpisodesBySeason.containsKey(episode.season)) {
-            watchedEpisodesBySeason[episode.season] = {};
+  getWatchedHistory() async {
+    final traktService = TraktService.instance;
+    try {
+      final result =
+          await traktService!.getWatchedShowsWithEpisodes(widget.meta);
+      watchedEpisodesBySeason.clear();
+      for (final show in result) {
+        if (show.episodes != null) {
+          for (final episode in show.episodes!) {
+            if (!watchedEpisodesBySeason.containsKey(episode.season)) {
+              watchedEpisodesBySeason[episode.season] = {};
+            }
+            watchedEpisodesBySeason[episode.season]!.add(episode.episode);
           }
-          watchedEpisodesBySeason[episode.season]!.add(episode.episode);
+        } else {
+          _logger.info("No episodes found for ${show.title}");
         }
-      } else {
-        //print("No episodes found for ${show.title}");
       }
+
+      setState(() {});
+      return;
+    } catch (e, stack) {
+      print("Error fetching Trakt data: $e");
+      print("Stack Trace: $stack");
     }
+  }
 
-    setState(() {});
-    return;
-  } catch (e, stack) {
-    print("Error fetching Trakt data: $e");
-    print("Stack Trace: $stack");
+  bool isEpisodeWatched(int season, int episode) {
+    return watchedEpisodesBySeason.containsKey(season) &&
+        watchedEpisodesBySeason[season]!.contains(episode);
   }
-}
-bool isEpisodeWatched(int season, int episode) {
-  return watchedEpisodesBySeason.containsKey(season) &&
-      watchedEpisodesBySeason[season]!.contains(episode);
-}
 
-bool isSeasonWatched(int season) {
-  if (!watchedEpisodesBySeason.containsKey(season)) {
-    return false; // No episodes watched in this season
+  bool isSeasonWatched(int season) {
+    if (!watchedEpisodesBySeason.containsKey(season)) {
+      return false;
+    }
+    if (seasonMap.containsKey(season)) {
+      return watchedEpisodesBySeason[season]!.length ==
+          seasonMap[season]!.length;
+    }
+    return false;
   }
-  if (seasonMap.containsKey(season)) {
-    return watchedEpisodesBySeason[season]!.length ==
-        seasonMap[season]!.length;
-  }
-  return false;
-}
 
   int getSelectedSeason() {
     return widget.meta.currentVideo?.season ??
@@ -120,19 +120,15 @@ bool isSeasonWatched(int season) {
 
   getWatchHistory() async {
     final traktService = TraktService.instance;
-
     try {
       if (TraktService.isEnabled()) {
         final result = await traktService!.getProgress(
           widget.meta,
           bypassCache: false,
         );
-
         setState(() {
           meta = result;
         });
-
-
         return;
       }
     } catch (e, stack) {
@@ -140,7 +136,6 @@ bool isSeasonWatched(int season) {
       print(stack);
       print("Unable to get trakt progress");
     }
-
     final docs = await zeeeWatchHistory!.getItemWatchHistory(
       ids: widget.meta.videos!.map((item) {
         return WatchHistoryGetRequest(
@@ -154,7 +149,6 @@ bool isSeasonWatched(int season) {
     for (var item in docs) {
       _progress[item.id] = item.progress.toDouble();
     }
-
   }
 
   @override
@@ -270,11 +264,14 @@ bool isSeasonWatched(int season) {
                     child: DropdownButtonFormField<int>(
                       isExpanded: true,
                       decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 2, vertical: 8),
                         filled: true,
-                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withOpacity(0.3),
                       ),
-
                       value: selectedSeason,
                       onChanged: (newValue) {
                         setState(() {
@@ -295,7 +292,6 @@ bool isSeasonWatched(int season) {
                                   Icons.check_circle,
                                   color: Theme.of(context).colorScheme.primary,
                                   size: 16,
-
                                 )
                               ]
                             ],
@@ -316,7 +312,7 @@ bool isSeasonWatched(int season) {
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-                  (context, index) {
+              (context, index) {
                 final currentSeason = selectedSeason;
                 if (currentSeason == null ||
                     !seasonMap.containsKey(currentSeason)) {
@@ -328,11 +324,11 @@ bool isSeasonWatched(int season) {
                 final videoIndex = meta.videos?.indexOf(episode);
 
                 final progress = ((!TraktService.isEnabled()
-                    ? (_progress[episode.id] ?? 0) / 100
-                    : videoIndex != -1
-                    ? (meta.videos![videoIndex!].progress)
-                    : 0.toDouble()) ??
-                    0) /
+                            ? (_progress[episode.id] ?? 0) / 100
+                            : videoIndex != -1
+                                ? (meta.videos![videoIndex!].progress)
+                                : 0.toDouble()) ??
+                        0) /
                     100;
 
                 return InkWell(
@@ -359,37 +355,37 @@ bool isSeasonWatched(int season) {
                             children: [
                               Container(
                                 child: episode.thumbnail != null &&
-                                    episode.thumbnail!.isNotEmpty
+                                        episode.thumbnail!.isNotEmpty
                                     ? Image.network(
-                                  episode.thumbnail!,
-                                  width: 140,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (context, error, stackTrace) {
-                                    return Container(
-                                      width: 140,
-                                      height: 90,
-                                      color: colorScheme
-                                          .surfaceContainerHighest,
-                                      child: Icon(
-                                        Icons.movie,
-                                        color:
-                                        colorScheme.onSurfaceVariant,
-                                      ),
-                                    );
-                                  },
-                                )
+                                        episode.thumbnail!,
+                                        width: 140,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            width: 140,
+                                            height: 90,
+                                            color: colorScheme
+                                                .surfaceContainerHighest,
+                                            child: Icon(
+                                              Icons.movie,
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
+                                            ),
+                                          );
+                                        },
+                                      )
                                     : Container(
-                                  width: 140,
-                                  height: 90,
-                                  color:
-                                  colorScheme.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.movie,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
+                                        width: 140,
+                                        height: 90,
+                                        color:
+                                            colorScheme.surfaceContainerHighest,
+                                        child: Icon(
+                                          Icons.movie,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
                               ),
                               Positioned(
                                 top: 0,
@@ -439,7 +435,7 @@ bool isSeasonWatched(int season) {
                                                 .fontSize,
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .primary, // Use primary color from theme
+                                                .primary,
                                           ),
                                         ),
                                       ),
@@ -503,7 +499,7 @@ bool isSeasonWatched(int season) {
                 );
               },
               childCount: selectedSeason != null &&
-                  seasonMap.containsKey(selectedSeason!)
+                      seasonMap.containsKey(selectedSeason!)
                   ? seasonMap[selectedSeason!]!.length
                   : 0,
             ),

@@ -20,7 +20,7 @@ class TraktShowWatched {
   final TraktIds ids;
   final DateTime? lastWatchedAt;
   final int plays;
-  List<TraktEpisodeWatched>? episodes; // Add episodes list
+  List<TraktEpisodeWatched>? episodes;
 
   TraktShowWatched({
     required this.title,
