@@ -100,6 +100,7 @@ class _ScaffoldWithNavState extends State<ScaffoldWithNav> {
             padding: const EdgeInsets.only(bottom: 64.0),
             child: widget.child,
           ),
+          extendBody: true,
           bottomNavigationBar: MobileNavigation(
             items: navigationItems,
             currentIndex: widget.child.currentIndex,
