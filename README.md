@@ -7,6 +7,11 @@ An open-source media manager app built with Flutter, designed to stream videos f
 - **Cross-Platform Support**: Works on Android, iOS supported by Flutter.
 - **Open Source**: Contributions are welcome!
 
+
+## TODO
+
+- [ ] Update dialog
+
 ## Screenshots
 
 <img src="readme/image/home.jpg" width="250" title="Home Page">
