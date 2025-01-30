@@ -96,8 +96,10 @@ class _ScaffoldWithNavState extends State<ScaffoldWithNav> {
     switch (deviceType) {
       case DeviceType.mobile:
         return Scaffold(
-          body: widget.child,
-          extendBody: true,
+          body: Padding(
+            padding: const EdgeInsets.only(bottom: 64.0),
+            child: widget.child,
+          ),
           bottomNavigationBar: MobileNavigation(
             items: navigationItems,
             currentIndex: widget.child.currentIndex,
