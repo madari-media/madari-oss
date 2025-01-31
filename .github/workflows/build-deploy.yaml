@@ -108,63 +108,6 @@ jobs:
           source-dir: build/app/outputs/flutter-apk
           destination-dir: nightly/${{ github.run_id }}/android
 
-  build_android_tv:
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Set up environment variables
-        run: |
-          touch .env
-          dart run build_runner build --delete-conflicting-outputs
-
-      - name: Create key.properties file
-        run: |
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=key.jks" >> android/key.properties
-
-      - name: Decode and save keystore file
-        run: |
-          echo "${{ secrets.STORE_FILE_BASE64 }}" | base64 --decode > android/app/key.jks
-
-      - run: |
-          sudo apt install ninja-build
-        name: install ninja
-
-      - name: Build Android
-        run: make build_android_tv
-
-      - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build
-          path: build/app/outputs/flutter-apk/app-release-tv.apk
-
-      - uses: ryand56/r2-upload-action@v1.4
-        with:
-          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
-          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: build/app/outputs/flutter-apk
-          destination-dir: nightly/${{ github.run_id }}/android-tv
-
   build_ipa:
     runs-on: macos-latest
     environment: prod
