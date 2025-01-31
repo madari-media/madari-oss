@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../../streamio_addons/models/stremio_base_types.dart';
 import '../../../../streamio_addons/service/stremio_addon_service.dart';
 import '../../../interface/widgets.dart';
+import '../../../service/home_layout_service.dart';
 import '../../../state/widget_state_provider.dart';
 import '../utils/size.dart';
 import 'catalog_featured_shimmer.dart';
@@ -52,6 +55,8 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
 
   late final id =
       'catalog-${widget.config["type"]}-${widget.config["addon"]}-${widget.config["id"]}';
+
+  late StreamSubscription<void> _refresh;
 
   InfiniteQuery<List<Meta>, int> getQuery({
     String? id,
@@ -160,6 +165,11 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
   void initState() {
     super.initState();
     _query = getQuery();
+
+    _refresh = HomeLayoutService.instance.refreshWidgets.listen((value) {
+      _query.refetch();
+    });
+
     _gridFocusNode = FocusNode(
       debugLabel: 'CatalogGrid-$id',
       onKeyEvent: _handleKeyEvent,
@@ -184,6 +194,7 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
   void dispose() {
     _scrollController.dispose();
     _gridFocusNode.dispose();
+    _refresh.cancel();
     super.dispose();
   }
 

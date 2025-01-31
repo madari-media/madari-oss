@@ -5,6 +5,7 @@ import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/features/widgetter/plugin_base.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/catalog_featured_shimmer.dart';
+import 'package:madari_client/features/widgetter/service/home_layout_service.dart';
 import 'package:madari_client/features/widgetter/state/widget_state_provider.dart';
 import 'package:madari_client/features/widgetter/types/home_layout_model.dart';
 import 'package:provider/provider.dart';
@@ -48,10 +49,14 @@ class LayoutManagerState extends State<LayoutManager> {
     super.didChangeDependencies();
   }
 
-  Future<void> refresh() {
-    return _loadLayouts(
+  Future<void> refresh() async {
+    final result = await _loadLayouts(
       refresh: true,
     );
+
+    HomeLayoutService.instance.refreshWidgets.add(true);
+
+    return result;
   }
 
   Future<void> _loadLayouts({
@@ -60,7 +65,8 @@ class LayoutManagerState extends State<LayoutManager> {
     try {
       _logger.info('Loading layouts');
       final query = Query(
-        key: "home_layout_${SelectedProfileService.instance.selectedProfileId}${widget.hasSearch}",
+        key:
+            "home_layout_${SelectedProfileService.instance.selectedProfileId}${widget.hasSearch}",
         config: QueryConfig(
           ignoreCacheDuration: refresh,
           cacheDuration: const Duration(hours: 8),

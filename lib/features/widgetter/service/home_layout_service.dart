@@ -2,6 +2,7 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:rxdart/subjects.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../types/widget_gallery.dart';
@@ -11,6 +12,8 @@ final _logger = Logger('HomeLayoutService');
 class HomeLayoutService {
   static final HomeLayoutService instance = HomeLayoutService._internal();
   HomeLayoutService._internal();
+
+  final BehaviorSubject refreshWidgets = BehaviorSubject();
 
   Future<List<LayoutWidgetConfig>> loadLayoutWidgets() async {
     try {
