@@ -174,20 +174,57 @@ class StreamioHeroSection extends StatelessWidget {
                   const SizedBox(
                     height: 12,
                   ),
-                  AddToListButton(
-                    label: const Row(
-                      mainAxisSize: MainAxisSize.min,
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      openVideoStream(
+                        context,
+                        meta,
+                      );
+                    },
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text("Play"),
+                  ),
+                  const SizedBox(
+                    height: 12,
+                  ),
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
                       children: [
-                        Icon(Icons.playlist_add_outlined),
-                        SizedBox(
+                        AddToListButton(
+                          meta: meta,
+                          listName: "Favourites",
+                          minimal: true,
+                        ),
+                        const SizedBox(
                           width: 8,
                         ),
-                        Text("Add to list"),
+                        AddToListButton(
+                          meta: meta,
+                          listName: "Watchlist",
+                          minimal: true,
+                        ),
+                        const SizedBox(
+                          width: 8,
+                        ),
+                        AddToListButton(
+                          label: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.playlist_add_outlined),
+                              SizedBox(
+                                width: 8,
+                              ),
+                              Text("Add to list"),
+                            ],
+                          ),
+                          meta: meta,
+                          icon: Icons.add,
+                        ),
                       ],
                     ),
-                    meta: meta,
-                    icon: Icons.add,
-                  )
+                  ),
                 ],
               ),
             ),

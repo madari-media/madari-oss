@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_client/features/external_player/service/external_player.dart';
+import 'package:madari_client/features/settings/service/playback_setting_service.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 
 import '../../../../streamio_addons/models/stremio_base_types.dart';
@@ -267,8 +269,20 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
 
     return InkWell(
       onTap: stream.url != null
-          ? () {
+          ? () async {
               if (stream.url != null) {
+                final settings =
+                    await PlaybackSettingsService.instance.getSettings();
+
+                if (settings.externalPlayer) {
+                  await ExternalPlayerService.openInExternalPlayer(
+                    videoUrl: stream.url!,
+                    playerPackage: settings.selectedExternalPlayer,
+                  );
+
+                  return;
+                }
+
                 String url =
                     '/player/${widget.meta.type}/${widget.meta.id}/${Uri.encodeQueryComponent(stream.url!)}?';
 
@@ -399,7 +413,9 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 

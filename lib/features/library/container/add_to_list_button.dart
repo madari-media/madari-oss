@@ -15,6 +15,7 @@ class AddToListButton extends StatefulWidget {
   final Function()? onRemoved;
   final String? listName;
   final Widget? label;
+  final bool minimal;
 
   const AddToListButton({
     super.key,
@@ -26,6 +27,7 @@ class AddToListButton extends StatefulWidget {
     this.onRemoved,
     this.listName,
     this.label,
+    this.minimal = false,
   }) : assert(
           listName != null || child != null || icon != null,
           'Either listName, child, or icon must be provided',
@@ -320,6 +322,51 @@ class _AddToListButtonState extends State<AddToListButton> {
     final colorScheme = theme.colorScheme;
 
     if (widget.listName != null) {
+      final icon = _getListIcon(widget.listName!);
+
+      // Minimal mode UI
+      if (widget.minimal) {
+        return IconButton(
+          onPressed: _isLoading
+              ? null
+              : () {
+                  if (_existsInList &&
+                      _existingItemId != null &&
+                      _existingList != null) {
+                    _removeFromList(context, _existingItemId!, _existingList!);
+                  } else {
+                    _createAndAddToList(context, widget.listName!);
+                  }
+                },
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                )
+              : Icon(
+                  _existsInList
+                      ? _getListIconUnselected(widget.listName!)
+                      : icon,
+                  color: _existsInList
+                      ? widget.listName?.toLowerCase() == 'favourites'
+                          ? Colors.red
+                          : colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+          style: IconButton.styleFrom(
+            backgroundColor: _existsInList
+                ? widget.listName?.toLowerCase() == 'favourites'
+                    ? Colors.red.withOpacity(0.1)
+                    : colorScheme.primary.withOpacity(0.1)
+                : null,
+          ),
+        );
+      }
+
+      // Original UI for non-minimal mode
       return ElevatedButton.icon(
         onPressed: _isLoading
             ? null
@@ -425,18 +472,33 @@ class _AddToListButtonState extends State<AddToListButton> {
                 _getListIcon(list.name),
                 size: 18,
               ),
-              child: Text(list.name),
+              child: _getListIcon(list.name) == Icons.folder_outlined
+                  ? Text(list.name)
+                  : null,
             ),
       ],
     );
   }
 
+  IconData _getListIconUnselected(String name) {
+    switch (name.toLowerCase()) {
+      case 'watchlist':
+        return Icons.bookmark;
+      case 'favourites':
+        return Icons.favorite;
+      case 'watch later':
+        return Icons.watch_later;
+      default:
+        return Icons.folder;
+    }
+  }
+
   IconData _getListIcon(String name) {
     switch (name.toLowerCase()) {
       case 'watchlist':
-        return Icons.bookmark_outlined;
+        return Icons.bookmark_add_outlined;
       case 'favourites':
-        return Icons.favorite;
+        return Icons.favorite_outline;
       case 'watch later':
         return Icons.watch_later_outlined;
       default:

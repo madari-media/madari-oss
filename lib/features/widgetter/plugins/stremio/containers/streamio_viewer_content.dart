@@ -6,8 +6,6 @@ import 'package:madari_client/features/widgetter/plugins/stremio/containers/stre
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_trailer_section.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_video_list.dart';
 
-import '../../../../library/container/add_to_list_button.dart';
-
 final _logger = Logger('StreamioViewerContent');
 
 class StreamioViewerContent extends StatefulWidget {
@@ -57,29 +55,6 @@ class _StreamioViewerContentState extends State<StreamioViewerContent> {
                     meta: widget.meta,
                     type: widget.type,
                     prefix: widget.prefix,
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          AddToListButton(
-                            meta: widget.meta,
-                            listName: "Favourites",
-                          ),
-                          const SizedBox(
-                            width: 8,
-                          ),
-                          AddToListButton(
-                            meta: widget.meta,
-                            listName: "Watchlist",
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16),
                   if (widget.meta.description != null)
