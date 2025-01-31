@@ -8,6 +8,7 @@ import 'package:universal_platform/universal_platform.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
+import '../../theme/theme/app_theme.dart';
 import '../../widgetter/plugin_base.dart';
 import '../../widgetter/plugins/stremio/stremio_plugin.dart';
 
@@ -17,7 +18,7 @@ Future startupApp() async {
   MediaKit.ensureInitialized();
 
   await AppPocketBaseService.ensureInitialized();
-
+  await AppTheme().ensureInitialized();
   await SelectedProfileService.instance.initialize();
 
   if (UniversalPlatform.isDesktop) {
@@ -27,6 +28,7 @@ Future startupApp() async {
   if (kDebugMode) {
     PluginRegistry.instance.reset();
   }
+
   PluginRegistry.instance.registerPlugin(
     StremioCatalogPlugin(),
   );
