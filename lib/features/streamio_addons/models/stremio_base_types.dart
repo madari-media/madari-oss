@@ -133,16 +133,54 @@ class StremioManifestCatalog {
   String id;
   String? name;
   final List<StremioManifestCatalogExtra>? extra;
-  final List<String>? extraRequired;
-  final List<String>? extraSupported;
+  @JsonKey(name: "extraRequired")
+  final List<String>? extraRequired_;
+  @JsonKey(name: "extraSupported")
+  final List<String>? extraSupported_;
+
+  List<String>? get extraRequired {
+    final List<String> returnValue = extraRequired_ ?? [];
+
+    if (extra == null) {
+      return extraRequired_;
+    }
+
+    for (final i in extra!) {
+      final result = returnValue.contains(i.name);
+
+      if (i.isRequired == true && !result) {
+        returnValue.add(i.name);
+      }
+    }
+
+    return returnValue;
+  }
+
+  List<String>? get extraSupported {
+    final List<String> returnValue = extraSupported_ ?? [];
+
+    if (extra == null) {
+      return extraSupported_;
+    }
+
+    for (final i in extra!) {
+      final result = returnValue.contains(i.name);
+
+      if (!result) {
+        returnValue.add(i.name);
+      }
+    }
+
+    return returnValue;
+  }
 
   StremioManifestCatalog({
     required this.id,
     required this.type,
     this.extra,
     this.name,
-    this.extraRequired,
-    this.extraSupported,
+    this.extraRequired_,
+    this.extraSupported_,
   });
 
   factory StremioManifestCatalog.fromRecord(RecordModel record) =>
@@ -151,17 +189,26 @@ class StremioManifestCatalog {
   factory StremioManifestCatalog.fromJson(Map<String, dynamic> json) =>
       _$StremioManifestCatalogFromJson(json);
 
-  Map<String, dynamic> toJson() => _$StremioManifestCatalogToJson(this);
+  Map<String, dynamic> toJson() {
+    final result = _$StremioManifestCatalogToJson(this);
+
+    result["extraRequired"] = extraRequired;
+    result["extraSupported"] = extraSupported;
+
+    return result;
+  }
 }
 
 @JsonSerializable()
 class StremioManifestCatalogExtra {
   final String name;
   final List<dynamic>? options;
+  final bool? isRequired;
 
   StremioManifestCatalogExtra({
     required this.name,
     required this.options,
+    this.isRequired,
   });
 
   factory StremioManifestCatalogExtra.fromJson(Map<String, dynamic> json) {

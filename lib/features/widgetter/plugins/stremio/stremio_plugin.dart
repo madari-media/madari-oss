@@ -1,4 +1,5 @@
 import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:madari_client/features/pocketbase/service/pocketbase.service.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 
@@ -16,10 +17,23 @@ class StremioCatalogPlugin extends PluginBase {
 
   @override
   Map<String, WidgetFactory> get widgetFactories => {
-        'catalog_grid': (config, pluginContext) => CatalogGrid(
-              config: config,
-              pluginContext: pluginContext,
-            ),
+        'catalog_grid': (config, pluginContext) {
+          if (pluginContext.hasSearch) {
+            if (config["can_search"]) {
+              return CatalogGrid(
+                config: config,
+                pluginContext: pluginContext,
+              );
+            }
+
+            return const SizedBox.shrink();
+          }
+
+          return CatalogGrid(
+            config: config,
+            pluginContext: pluginContext,
+          );
+        },
         'catalog_grid_big': (config, pluginContext) => CatalogGrid(
               config: config,
               isWide: true,

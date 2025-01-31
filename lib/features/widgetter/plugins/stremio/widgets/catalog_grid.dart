@@ -81,7 +81,7 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
 
           List<ConnectionFilterItem> items = [];
 
-          if (state.search.trim() != "") {
+          if (state.search.trim() != "" && widget.pluginContext.hasSearch) {
             items.add(
               ConnectionFilterItem(
                 title: "search",

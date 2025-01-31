@@ -60,7 +60,7 @@ class LayoutManagerState extends State<LayoutManager> {
     try {
       _logger.info('Loading layouts');
       final query = Query(
-        key: "home_layout_${SelectedProfileService.instance.selectedProfileId}",
+        key: "home_layout_${SelectedProfileService.instance.selectedProfileId}${widget.hasSearch}",
         config: QueryConfig(
           ignoreCacheDuration: refresh,
           cacheDuration: const Duration(hours: 8),
@@ -117,39 +117,40 @@ class LayoutManagerState extends State<LayoutManager> {
                 const SearchBox(
                   hintText: 'Search...',
                 ),
-              Expanded(
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final layout = _filteredLayouts[index];
+              if (!widget.hasSearch || search.trim() != "")
+                Expanded(
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final layout = _filteredLayouts[index];
 
-                          if (widget.hasSearch) {
-                            if (!(layout.pluginId == "stremio_catalog" &&
-                                layout.type == "catalog_grid")) {
-                              return const SizedBox.shrink();
+                            if (widget.hasSearch) {
+                              if (!(layout.pluginId == "stremio_catalog" &&
+                                  layout.type == "catalog_grid")) {
+                                return const SizedBox.shrink();
+                              }
                             }
-                          }
 
-                          return PluginWidget(
-                            key: ValueKey(
-                              '${layout.id}_${layout.pluginId}_${layout.type}_${search.trim()}',
-                            ),
-                            layout: layout,
-                            pluginContext: PluginContext(
-                              index: index,
-                              hasSearch: widget.hasSearch,
-                            ),
-                          );
-                        },
-                        childCount: _filteredLayouts.length,
+                            return PluginWidget(
+                              key: ValueKey(
+                                '${layout.id}_${layout.pluginId}_${layout.type}_${search.trim()}',
+                              ),
+                              layout: layout,
+                              pluginContext: PluginContext(
+                                index: index,
+                                hasSearch: widget.hasSearch,
+                              ),
+                            );
+                          },
+                          childCount: _filteredLayouts.length,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
             ],
           );
         },

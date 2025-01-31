@@ -296,15 +296,6 @@ class StremioAddonService {
       return [];
     }
 
-    if (page != null && catalog.extraSupported?.contains("skip") == true) {
-      items.add(
-        ConnectionFilterItem(
-          title: "skip",
-          value: page * perPage,
-        ),
-      );
-    }
-
     if (page != null && catalog.extraSupported?.contains("region") == true) {
       final region = AppPocketBaseService.instance.pb.authStore.record!
           .getStringValue("region");
@@ -368,6 +359,22 @@ class StremioAddonService {
         if (filterPath.isNotEmpty) {
           url += "?$filterPath";
         }
+      }
+
+      final isSearch = items.firstWhereOrNull((item) {
+            return item.title == "search";
+          }) !=
+          null;
+
+      if (page != null &&
+          catalog.extraSupported?.contains("skip") == true &&
+          !isSearch) {
+        items.add(
+          ConnectionFilterItem(
+            title: "skip",
+            value: page * perPage,
+          ),
+        );
       }
 
       final httpBody = await http.get(Uri.parse(url));
