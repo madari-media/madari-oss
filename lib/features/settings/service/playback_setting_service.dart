@@ -40,12 +40,14 @@ class PlaybackSettingsService {
       'disableHardwareAcceleration': settings.disableHardwareAcceleration,
       'externalPlayer': settings.externalPlayer,
       'selectedExternalPlayer': settings.selectedExternalPlayer,
+      'bufferSize': settings.bufferSize,
+      'fontSize': settings.fontSize,
     };
 
     await prefs.setString(_localSettingsKey, json.encode(localSettings));
     await AppPocketBaseService.instance.pb.collection('users').update(
-      AppPocketBaseService.instance.pb.authStore.model.id,
-      body: {'playback_v2': settings.toJson()},
+      AppPocketBaseService.instance.pb.authStore.record!.id,
+      body: {'config': settings.toJson()},
     );
 
     _cachedSettings = settings;
@@ -65,7 +67,7 @@ class PlaybackSettingsService {
             );
 
     final serverSettings = PlaybackSettings.fromJson(
-      record.data['playback_v2'] ?? {},
+      record.data['config'] ?? {},
     );
 
     _cachedSettings = PlaybackSettings(
@@ -74,11 +76,13 @@ class PlaybackSettingsService {
       defaultAudioTrack: serverSettings.defaultAudioTrack,
       defaultSubtitleTrack: serverSettings.defaultSubtitleTrack,
       subtitleColor: serverSettings.subtitleColor,
-      fontSize: serverSettings.fontSize,
+      fontSize: (localSettings['fontSize'] ?? 16).toDouble(),
       disableHardwareAcceleration:
           localSettings['disableHardwareAcceleration'] ?? false,
       externalPlayer: localSettings['externalPlayer'] ?? false,
       selectedExternalPlayer: localSettings['selectedExternalPlayer'],
+      disableSubtitles: serverSettings.disableSubtitles,
+      bufferSize: (localSettings['bufferSize'] ?? 32),
     );
 
     return _cachedSettings!;

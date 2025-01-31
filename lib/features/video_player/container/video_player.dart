@@ -151,6 +151,7 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
                 body: VideoPlay(
                   stream: widget.stream,
                   meta: widget.meta,
+                  bufferSize: state.data?.bufferSize ?? 32,
                   index: index,
                   key: ValueKey('${widget.id}_${widget.selectedIndex}'),
                   enabledHardwareAcceleration:

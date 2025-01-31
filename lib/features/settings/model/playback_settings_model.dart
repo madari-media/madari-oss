@@ -11,6 +11,7 @@ class PlaybackSettings {
   double fontSize;
   bool externalPlayer;
   String? selectedExternalPlayer;
+  int bufferSize;
 
   PlaybackSettings({
     this.autoPlay = true,
@@ -23,6 +24,7 @@ class PlaybackSettings {
     this.fontSize = 16,
     this.externalPlayer = false,
     this.selectedExternalPlayer,
+    this.bufferSize = 32,
   });
 
   Map<String, dynamic> toJson() => {
@@ -32,16 +34,18 @@ class PlaybackSettings {
         'defaultSubtitleTrack': defaultSubtitleTrack,
         'subtitleColor': subtitleColor.value,
         'fontSize': fontSize,
+        'disableSubtitles': disableSubtitles,
       };
 
   factory PlaybackSettings.fromJson(Map<String, dynamic> json) {
     return PlaybackSettings(
       autoPlay: json['autoPlay'] ?? true,
-      playbackSpeed: json['playbackSpeed'] ?? 1.0,
+      playbackSpeed: (json['playbackSpeed'] ?? 1.0).toDouble(),
       defaultAudioTrack: json['defaultAudioTrack'] ?? 'eng',
       defaultSubtitleTrack: json['defaultSubtitleTrack'] ?? 'eng',
       subtitleColor: Color(json['subtitleColor'] ?? Colors.white.value),
-      fontSize: json['fontSize'] ?? 16,
+      fontSize: (json['fontSize'] ?? 16).toDouble(),
+      disableSubtitles: json['disableSubtitles'] ?? false,
     );
   }
 }

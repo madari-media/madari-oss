@@ -372,6 +372,38 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                     ],
                   ],
                 ),
+                _buildSection(
+                  "Player buffer",
+                  [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("${settings.bufferSize} MB"),
+                        Row(
+                          children: [
+                            const Text('32 MB'),
+                            Expanded(
+                              child: Slider(
+                                value: settings.bufferSize.toDouble(),
+                                min: 32,
+                                max: 2024,
+                                label: settings.bufferSize.round().toString(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    settings.bufferSize = value.toInt();
+                                    PlaybackSettingsService.instance
+                                        .saveSettings(settings);
+                                  });
+                                },
+                              ),
+                            ),
+                            const Text('2024 MB'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             );
           },

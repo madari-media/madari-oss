@@ -15,6 +15,7 @@ class VideoPlay extends StatefulWidget {
   final Meta? meta;
   final int index;
   final String stream;
+  final int bufferSize;
 
   const VideoPlay({
     super.key,
@@ -25,6 +26,7 @@ class VideoPlay extends StatefulWidget {
     required void Function(String message) onError,
     required this.index,
     required this.stream,
+    required this.bufferSize,
   });
 
   @override
@@ -35,8 +37,9 @@ class _VideoPlayState extends State<VideoPlay> {
   late String stream = widget.stream;
 
   late final player = Player(
-    configuration: const PlayerConfiguration(
+    configuration: PlayerConfiguration(
       title: "Madari",
+      bufferSize: widget.bufferSize * 1024 * 1024,
     ),
   );
 
