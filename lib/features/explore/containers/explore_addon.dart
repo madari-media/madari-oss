@@ -52,6 +52,8 @@ class _ExploreAddonState extends State<ExploreAddon> {
     return "explorer_page_${selectedType}_${selectedId}_$selectedGenre";
   }
 
+  final titles = {};
+
   InfiniteQuery<List<Meta>, int> buildQuery() {
     return InfiniteQuery(
       key: queryKey,
@@ -146,7 +148,11 @@ class _ExploreAddonState extends State<ExploreAddon> {
           continue;
         }
 
-        types.add(value.id);
+        if (value.extraRequired?.where((res) => res != "genre").isEmpty ==
+            true) {
+          titles[value.id] = value.name;
+          types.add(value.id);
+        }
       }
     }
 
@@ -192,39 +198,43 @@ class _ExploreAddonState extends State<ExploreAddon> {
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: items.length,
-              itemBuilder: (context, index) => ListTile(
-                title: Text(
-                  items[index]
-                      .replaceAll(".", " ")
-                      .split(" ")
-                      .map((item) => item.capitalize)
-                      .join(" "),
-                ),
-                selected: items[index] == current,
-                trailing: items[index] == current
-                    ? Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).highlightColor,
-                      )
-                    : null,
-                onTap: () {
-                  onSelect(items[index]);
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(
+                    titles.containsKey(items[index])
+                        ? titles[items[index]]
+                        : items[index]
+                            .replaceAll(".", " ")
+                            .split(" ")
+                            .map((item) => item.capitalize)
+                            .join(" "),
+                  ),
+                  selected: items[index] == current,
+                  trailing: items[index] == current
+                      ? Icon(
+                          Icons.check_circle,
+                          color: Theme.of(context).highlightColor,
+                        )
+                      : null,
+                  onTap: () {
+                    onSelect(items[index]);
 
-                  if (resetTypes.contains('categories')) {
-                    selectedId = null;
-                  }
+                    if (resetTypes.contains('categories')) {
+                      selectedId = null;
+                    }
 
-                  if (resetTypes.contains('genres')) {
-                    selectedGenre = null;
-                  }
-                  setFirstThing();
-                  setOptionValues();
+                    if (resetTypes.contains('genres')) {
+                      selectedGenre = null;
+                    }
+                    setFirstThing();
+                    setOptionValues();
 
-                  setQuery();
+                    setQuery();
 
-                  Navigator.pop(context);
-                },
-              ),
+                    Navigator.pop(context);
+                  },
+                );
+              },
             ),
           ),
         ],

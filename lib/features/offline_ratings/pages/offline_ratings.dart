@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/rating_model.dart' as rating_model;
 import '../services/ratings_service.dart';
@@ -20,6 +21,19 @@ class _OfflineRatingsState extends State<OfflineRatings> {
   bool _isLoading = false;
   bool _isDownloadComplete = false;
 
+  @override
+  void initState() {
+    super.initState();
+
+    SharedPreferences.getInstance().then((pref) {
+      final result = pref.getString("offline_rating_preference_url");
+
+      if (result != null) {
+        _urlController.text = result;
+      }
+    });
+  }
+
   Future<void> _downloadRatings(String url) async {
     if (url.isEmpty) {
       setState(() {
@@ -28,6 +42,10 @@ class _OfflineRatingsState extends State<OfflineRatings> {
       });
       return;
     }
+
+    final pref = await SharedPreferences.getInstance();
+
+    pref.setString("offline_rating_preference_url", url);
 
     setState(() {
       _isLoading = true;

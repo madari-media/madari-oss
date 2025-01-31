@@ -45,6 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>infuse</string>
+        <string>open-vidhub</string>
+        <string>vlc</string>
+        <string>outplayer</string>
+    </array>
 	<key>CFBundleDocumentTypes</key>
     <array>
         <dict>
