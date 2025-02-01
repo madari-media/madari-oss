@@ -79,11 +79,6 @@ class StremioAddonService {
             ),
           );
 
-          if (body.streams.isEmpty) {
-            _logger.finer('No stream data found for URL: $url');
-            continue;
-          }
-
           streams.addAll(
             body.streams.toList(),
           );

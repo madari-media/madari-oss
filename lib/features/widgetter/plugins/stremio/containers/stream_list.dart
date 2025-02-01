@@ -298,12 +298,14 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
                   );
                 }
 
-                context.push(
-                  url + query.join("&"),
-                  extra: {
-                    "meta": widget.meta,
-                  },
-                );
+                if (mounted) {
+                  context.push(
+                    url + query.join("&"),
+                    extra: {
+                      "meta": widget.meta,
+                    },
+                  );
+                }
               }
             }
           : null,
@@ -527,14 +529,22 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
             ),
           ),
           Expanded(
-            child: ListView.separated(
-              itemCount: filteredStreams.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final streamData = filteredStreams[index];
-                return _buildStreamCard(streamData, theme);
-              },
-            ),
+            child: filteredStreams.isEmpty
+                ? Center(
+                    child: Text(
+                      "No streams found",
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: filteredStreams.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final streamData = filteredStreams[index];
+                      return _buildStreamCard(streamData, theme);
+                    },
+                  ),
           ),
         ],
       ),
