@@ -348,7 +348,20 @@ class Meta {
   @JsonKey(name: "moviedb_id")
   final int? moviedbId;
   @JsonKey(name: "runtime")
-  final String? runtime;
+  final String? runtime_;
+
+  String? get runtime {
+    try {
+      if (runtime_ == null) {
+        return runtime_;
+      }
+
+      return formatTimeFromMinutes(runtime_!);
+    } catch (e) {
+      return runtime_;
+    }
+  }
+
   @JsonKey(name: "trailers")
   final List<Trailer>? trailers;
   @JsonKey(name: "popularity")
@@ -432,7 +445,7 @@ class Meta {
     this.logo,
     this.awards,
     this.moviedbId,
-    this.runtime,
+    this.runtime_,
     this.trailers,
     this.popularity,
     required this.id,
@@ -520,7 +533,7 @@ class Meta {
         logo: logo ?? this.logo,
         awards: awards ?? this.awards,
         moviedbId: moviedbId ?? this.moviedbId,
-        runtime: runtime ?? this.runtime,
+        runtime_: runtime ?? this.runtime,
         trailers: trailers ?? this.trailers,
         popularity: popularity ?? this.popularity,
         id: id ?? this.id,
@@ -898,6 +911,14 @@ class VideoStream {
       _$VideoStreamFromJson(json);
 
   Map<String, dynamic> toJson() => _$VideoStreamToJson(this);
+
+  @override
+  int get hashCode => "$url$name$title$description".length;
+
+  @override
+  bool operator ==(Object other) {
+    return super.hashCode == other.hashCode;
+  }
 }
 
 class StreamInfo {
@@ -1002,8 +1023,10 @@ class StreamParser {
     final unratedMatch = _unratedRegex.hasMatch(name);
     final sizeMatch = _sizeRegex.firstMatch(name);
 
+    final res = resMatch?.group(1)?.toUpperCase();
+
     return StreamInfo(
-      resolution: resMatch?.group(1)?.toUpperCase(),
+      resolution: res == "2160P" ? "4K" : res,
       quality: qualMatch?.group(1)?.toUpperCase(),
       codec: codecMatch?.group(1)?.toUpperCase(),
       audio: audioMatch?.group(1)?.toUpperCase(),
@@ -1013,4 +1036,29 @@ class StreamParser {
       size: parseSize(sizeMatch?.group(1)),
     );
   }
+}
+
+String formatTimeFromMinutes(String minutesInput) {
+  int? minutes = int.tryParse(minutesInput);
+
+  if (minutes == null) {
+    return minutesInput;
+  }
+
+  int hours = minutes ~/ 60;
+  int remainingMinutes = minutes % 60;
+
+  if (hours == 0) {
+    return '$remainingMinutes minutes';
+  }
+  if (remainingMinutes == 0) {
+    return '$hours hours';
+  }
+  return '$hours hours $remainingMinutes minutes';
+
+  // Format 2 (Alternative): Compact format
+  // return '${hours}h ${remainingMinutes}m';
+
+  // Format 3 (Alternative): Digital clock format
+  // return '${hours.toString().padLeft(2, '0')}:${remainingMinutes.toString().padLeft(2, '0')}';
 }

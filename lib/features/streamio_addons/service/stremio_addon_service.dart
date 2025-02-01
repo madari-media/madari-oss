@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:madari_client/data/db.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/utils/array-extension.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../../widgetter/plugins/stremio/models/cast_info.dart';
@@ -208,8 +209,22 @@ class StremioAddonService {
 
       await getInstalledAddons().refetch();
     } catch (e, stack) {
-      print(e);
-      print(stack);
+      _logger.warning("Error to save addon", e, stack);
+
+      if (e is ClientException) {
+        try {
+          if (e.response.values.first["url"]["code"] ==
+              "validation_not_unique") {
+            throw Exception(
+              "Addon already installed make sure you don't have this in disabled addons.",
+            );
+          }
+        } catch (ex, stack) {
+          _logger.warning("Error find error", ex, stack);
+          throw Exception(e.response.values);
+        }
+      }
+
       throw Exception('Failed to save addon: $e');
     }
   }

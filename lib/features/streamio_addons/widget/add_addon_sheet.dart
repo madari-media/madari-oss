@@ -1,6 +1,7 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../models/stremio_base_types.dart';
 import '../service/stremio_addon_service.dart';
@@ -65,7 +66,7 @@ class _AddAddonSheetState extends State<AddAddonSheet> {
     final manifest = await query.queryFn();
     if (!mounted) return;
 
-    _installAddon(manifest);
+    await _installAddon(manifest);
   }
 
   Future<void> _installAddon(StremioManifest manifest) async {
@@ -79,9 +80,17 @@ class _AddAddonSheetState extends State<AddAddonSheet> {
         Navigator.of(context).pop();
       }
     } catch (e) {
+      print(e);
       if (mounted) {
+        if (e is ClientException) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to install addon: ${e.response}')),
+          );
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to install addon: $e')),
+          SnackBar(content: Text('Failed to install addon: ${e}')),
         );
       }
     } finally {
@@ -144,7 +153,9 @@ class _AddAddonSheetState extends State<AddAddonSheet> {
                   FilledButton.icon(
                     onPressed: () => _validateManifest(),
                     icon: const Icon(Icons.check),
-                    label: const Text('Validate'),
+                    label: _isInstalling
+                        ? const Text("Installing")
+                        : const Text('Install'),
                   ),
                   const SizedBox(height: 24),
                   const Text(

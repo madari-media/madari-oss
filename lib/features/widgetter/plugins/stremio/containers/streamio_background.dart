@@ -20,7 +20,11 @@ Future<void> openVideoStream(BuildContext context, Meta meta) async {
     builder: (context) {
       return Scaffold(
         body: StreamioStreamList(
-          meta: meta,
+          meta: meta.type == "series"
+              ? meta.copyWith(
+                  selectedVideoIndex: meta.selectedVideoIndex ?? 0,
+                )
+              : meta,
         ),
       );
     },
@@ -115,19 +119,21 @@ class StreamioHeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    IconButton.filled(
-                      onPressed: () {
-                        _logger.info('Play button pressed for ${meta.name}');
+                    if (meta.type != "series")
+                      IconButton.filled(
+                        onPressed: () {
+                          _logger.info('Play button pressed for ${meta.name}');
 
-                        openVideoStream(context, meta);
-                      },
-                      icon: const Icon(Icons.play_arrow, size: 32),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
+                          openVideoStream(context, meta);
+                        },
+                        icon: const Icon(Icons.play_arrow, size: 32),
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -149,11 +155,18 @@ class StreamioHeroSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${meta.year ?? ''} • ${meta.runtime ?? ''} • ${meta.genres?.join(', ') ?? ''}',
+                    '${meta.year ?? ''} • ${meta.genres?.join(', ') ?? ''}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
                   ),
+                  if (meta.runtime != null)
+                    Text(
+                      meta.runtime!,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                    ),
                   if (meta.imdbRating.isNotEmpty &&
                       meta.imdbRating.toString() != "null") ...[
                     const SizedBox(height: 16),
@@ -171,19 +184,21 @@ class StreamioHeroSection extends StatelessWidget {
                       ],
                     ),
                   ],
-                  const SizedBox(
-                    height: 12,
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      openVideoStream(
-                        context,
-                        meta,
-                      );
-                    },
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text("Play"),
-                  ),
+                  if (meta.type != "series") ...[
+                    const SizedBox(
+                      height: 12,
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        openVideoStream(
+                          context,
+                          meta,
+                        );
+                      },
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text("Play"),
+                    ),
+                  ],
                   const SizedBox(
                     height: 12,
                   ),

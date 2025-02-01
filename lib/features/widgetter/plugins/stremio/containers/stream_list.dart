@@ -35,6 +35,7 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
   Set<String> _selectedAudios = {};
   Set<String> _selectedSizes = {};
   final Set<String> _selectedAddons = {};
+  final Map<String, List<StreamWithAddon>> streamsByAddon = {};
 
   Set<String> _resolutions = {};
   Set<String> _qualities = {};
@@ -53,7 +54,6 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
     _logger.info('Loading streams for ${widget.meta.id}');
 
     final addons = service.getInstalledAddons();
-
     final result = await addons.queryFn();
 
     final count = result
@@ -63,7 +63,6 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
               return true;
             }
           }
-
           return false;
         })
         .toList()
@@ -86,7 +85,6 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
       callback: (items, addonName, error) {
         setState(() {
           left -= 1;
-
           if (left <= 0) {
             _isLoading = false;
           }
@@ -98,7 +96,7 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
           return;
         }
 
-        if (items != null) {
+        if (items != null && addonName != null) {
           final Set<String> resSet = {};
           final Set<String> qualSet = {};
           final Set<String> codecSet = {};
@@ -106,12 +104,10 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
           final Set<String> sizeSet = {};
 
           final streamsWithAddon = items
-              .map(
-                (stream) => StreamWithAddon(
-                  stream: stream,
-                  addonName: addonName,
-                ),
-              )
+              .map((stream) => StreamWithAddon(
+                    stream: stream,
+                    addonName: addonName,
+                  ))
               .toList();
 
           for (var streamData in streamsWithAddon) {
@@ -135,14 +131,13 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
 
           if (mounted) {
             setState(() {
-              streams.addAll(streamsWithAddon);
-              if (addonName != null) _addons.add(addonName);
-              _resolutions = resSet;
-              _qualities = qualSet;
-              _codecs = codecSet;
-              _audios = audioSet;
-              _sizes = sizeSet;
-              _isLoading = false;
+              streamsByAddon[addonName] = streamsWithAddon;
+              _addons.add(addonName);
+              _resolutions.addAll(resSet);
+              _qualities.addAll(qualSet);
+              _codecs.addAll(codecSet);
+              _audios.addAll(audioSet);
+              _sizes.addAll(sizeSet);
             });
           }
         }
@@ -150,26 +145,20 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
     );
   }
 
-  Color _getQualityColor(String resolution) {
-    final res = resolution.toUpperCase();
-    if (res.contains('2160P') || res.contains('4K') || res.contains('UHD')) {
-      return Colors.amberAccent;
-    } else if (res.contains('1080P')) {
-      return Colors.blue;
-    } else if (res.contains('720P')) {
-      return Colors.green;
-    }
-    return Colors.grey;
-  }
-
   List<StreamWithAddon> _getFilteredStreams() {
-    return streams.where((streamData) {
-      if (streamData.stream.name == null) return false;
-
-      if (_selectedAddons.isNotEmpty &&
-          !_selectedAddons.contains(streamData.addonName)) {
-        return false;
+    List<StreamWithAddon> allStreams = [];
+    if (_selectedAddons.isEmpty) {
+      streamsByAddon.values.forEach(allStreams.addAll);
+    } else {
+      for (var addon in _selectedAddons) {
+        if (streamsByAddon.containsKey(addon)) {
+          allStreams.addAll(streamsByAddon[addon]!);
+        }
       }
+    }
+
+    return allStreams.where((streamData) {
+      if (streamData.stream.name == null) return false;
 
       try {
         final info = StreamParser.parseStreamName(streamData.stream.name!);
@@ -195,7 +184,9 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
             matchesSize;
       } catch (e) {
         _logger.warning(
-            'Error parsing stream info: ${streamData.stream.name}', e);
+          'Error parsing stream info: ${streamData.stream.name}',
+          e,
+        );
         return false;
       }
     }).toList();
@@ -259,154 +250,6 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
           buildFilterGroup(_sizes, _selectedSizes,
               (value) => setState(() => _selectedSizes = value)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStreamCard(StreamWithAddon streamData, ThemeData theme) {
-    final stream = streamData.stream;
-    final info = StreamParser.parseStreamName(stream.name ?? '');
-
-    return InkWell(
-      onTap: stream.url != null
-          ? () async {
-              if (stream.url != null) {
-                final settings =
-                    await PlaybackSettingsService.instance.getSettings();
-
-                if (settings.externalPlayer) {
-                  await ExternalPlayerService.openInExternalPlayer(
-                    videoUrl: stream.url!,
-                    playerPackage: settings.selectedExternalPlayer,
-                  );
-
-                  return;
-                }
-
-                String url =
-                    '/player/${widget.meta.type}/${widget.meta.id}/${Uri.encodeQueryComponent(stream.url!)}?';
-
-                final List<String> query = [];
-
-                if (widget.meta.selectedVideoIndex != null) {
-                  query.add("index=${widget.meta.selectedVideoIndex}");
-                }
-
-                if (stream.behaviorHints?["bingeGroup"] != null) {
-                  query.add(
-                    "binge-group=${Uri.encodeQueryComponent(stream.behaviorHints?["bingeGroup"])}",
-                  );
-                }
-
-                if (mounted) {
-                  context.push(
-                    url + query.join("&"),
-                    extra: {
-                      "meta": widget.meta,
-                    },
-                  );
-                }
-              }
-            }
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (info.resolution != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: StreamTag(
-                            text: info.resolution!,
-                            color: _getQualityColor(info.resolution!),
-                            outlined: true,
-                          ),
-                        ),
-                      Text(
-                        (stream.name ?? 'Unknown Title') +
-                            (stream.url != null ? "" : " (Not supported)"),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        stream.title ?? 'Unknown Title',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (stream.description != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            stream.description!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      if (streamData.addonName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'From: ${streamData.addonName}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (info.quality != null &&
-                info.codec != null &&
-                info.audio != null &&
-                info.size != null &&
-                info.unrated)
-              const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (info.quality != null)
-                  StreamTag(
-                    text: info.quality!,
-                    color: theme.colorScheme.secondary,
-                  ),
-                if (info.codec != null)
-                  StreamTag(
-                    text: info.codec!,
-                    color: theme.colorScheme.tertiary,
-                  ),
-                if (info.audio != null)
-                  StreamTag(
-                    text: info.audio!,
-                    color: theme.colorScheme.primary,
-                  ),
-                if (info.size != null)
-                  StreamTag(
-                    text: StreamParser.getSizeCategory(info.size),
-                    color: theme.colorScheme.secondary,
-                  ),
-                if (info.unrated)
-                  StreamTag(
-                    text: 'UNRATED',
-                    color: theme.colorScheme.error,
-                  ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -490,18 +333,13 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
                   value: addon,
                   child: Row(
                     children: [
-                      Checkbox(
-                        value: _selectedAddons.contains(addon),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedAddons.add(addon);
-                            } else {
-                              _selectedAddons.remove(addon);
-                            }
-                          });
-                          Navigator.pop(context);
-                        },
+                      Icon(
+                        _selectedAddons.contains(addon)
+                            ? Icons.check_circle
+                            : Icons.circle_outlined,
+                      ),
+                      const SizedBox(
+                        width: 6,
                       ),
                       Text(addon),
                     ],
@@ -538,11 +376,16 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
                   )
                 : ListView.separated(
                     itemCount: filteredStreams.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
+                    separatorBuilder: (context, index) => const Divider(
+                      height: 1,
+                    ),
                     itemBuilder: (context, index) {
                       final streamData = filteredStreams[index];
-                      return _buildStreamCard(streamData, theme);
+
+                      return StreamCard(
+                        streamWithAddon: streamData,
+                        meta: widget.meta,
+                      );
                     },
                   ),
           ),
@@ -557,6 +400,13 @@ class StreamWithAddon {
   final String? addonName;
 
   StreamWithAddon({required this.stream, this.addonName});
+
+  StreamWithAddon copy() {
+    return StreamWithAddon(
+      stream: stream.copyWith(),
+      addonName: addonName,
+    );
+  }
 }
 
 class StreamTag extends StatelessWidget {
@@ -595,5 +445,183 @@ class StreamTag extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class StreamCard extends StatelessWidget {
+  final StreamWithAddon streamWithAddon;
+  final Meta meta;
+
+  const StreamCard({
+    super.key,
+    required this.meta,
+    required this.streamWithAddon,
+  });
+
+  VideoStream get stream {
+    return streamWithAddon.stream.copyWith();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final info = StreamParser.parseStreamName(stream.name ?? '');
+
+    return InkWell(
+      onTap: stream.url != null
+          ? () async {
+              if (stream.url != null) {
+                final settings =
+                    await PlaybackSettingsService.instance.getSettings();
+
+                if (settings.externalPlayer) {
+                  await ExternalPlayerService.openInExternalPlayer(
+                    videoUrl: stream.url!,
+                    playerPackage: settings.selectedExternalPlayer,
+                  );
+
+                  return;
+                }
+
+                String url =
+                    '/player/${meta.type}/${meta.id}/${Uri.encodeQueryComponent(stream.url!)}?';
+
+                final List<String> query = [];
+
+                if (meta.selectedVideoIndex != null) {
+                  query.add("index=${meta.selectedVideoIndex}");
+                }
+
+                if (stream.behaviorHints?["bingeGroup"] != null) {
+                  query.add(
+                    "binge-group=${Uri.encodeQueryComponent(stream.behaviorHints?["bingeGroup"])}",
+                  );
+                }
+
+                if (context.mounted) {
+                  context.push(
+                    url + query.join("&"),
+                    extra: {
+                      "meta": meta,
+                    },
+                  );
+                }
+              }
+            }
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (info.resolution != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: StreamTag(
+                            text: info.resolution!,
+                            color: _getQualityColor(info.resolution!),
+                            outlined: true,
+                          ),
+                        ),
+                      Text(
+                        (stream.name ?? 'Unknown Title') +
+                            (stream.url != null ? "" : " (Not supported)"),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (stream.title != null)
+                        Text(
+                          stream.title!,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      if (stream.description != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            stream.description!,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      if (streamWithAddon.addonName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'From: ${streamWithAddon.addonName}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (info.quality != null &&
+                info.codec != null &&
+                info.audio != null &&
+                info.size != null &&
+                info.unrated)
+              const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (info.quality != null)
+                  StreamTag(
+                    text: info.quality!,
+                    color: theme.colorScheme.secondary,
+                  ),
+                if (info.codec != null)
+                  StreamTag(
+                    text: info.codec!,
+                    color: theme.colorScheme.tertiary,
+                  ),
+                if (info.audio != null)
+                  StreamTag(
+                    text: info.audio!,
+                    color: theme.colorScheme.primary,
+                  ),
+                if (info.size != null)
+                  StreamTag(
+                    text: StreamParser.getSizeCategory(info.size),
+                    color: theme.colorScheme.secondary,
+                  ),
+                if (info.unrated)
+                  StreamTag(
+                    text: 'UNRATED',
+                    color: theme.colorScheme.error,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getQualityColor(String resolution) {
+    final res = resolution.toUpperCase();
+    if (res.contains('2160P') || res.contains('4K') || res.contains('UHD')) {
+      return Colors.amberAccent;
+    } else if (res.contains('1080P')) {
+      return Colors.blue;
+    } else if (res.contains('720P')) {
+      return Colors.green;
+    }
+    return Colors.grey;
   }
 }
