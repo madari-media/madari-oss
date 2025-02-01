@@ -6,7 +6,9 @@ import 'package:madari_client/features/settings/pages/settings/profile_selector.
 import 'package:madari_client/features/settings/service/selected_profile.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {

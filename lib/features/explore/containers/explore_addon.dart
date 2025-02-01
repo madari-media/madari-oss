@@ -27,7 +27,8 @@ class _ExploreAddonState extends State<ExploreAddon> {
   String? selectedType;
   String? selectedId;
   String? selectedGenre;
-  StremioManifest? selectedAddon;
+  final Map<String, StremioManifest> _selectedAddon = {};
+
   static const int pageSize = 20;
   final service = StremioAddonService.instance;
 
@@ -71,7 +72,9 @@ class _ExploreAddonState extends State<ExploreAddon> {
         _logger.info('Fetching catalog for page: $page');
         try {
           final addonManifest = await service
-              .validateManifest(selectedAddon!.manifestUrl!)
+              .validateManifest(
+                _selectedAddon["${selectedType}_$selectedId"]!.manifestUrl!,
+              )
               .queryFn();
 
           List<ConnectionFilterItem> items = [];
@@ -117,6 +120,8 @@ class _ExploreAddonState extends State<ExploreAddon> {
         }
 
         if (selectedType == value.type && selectedId == value.id) {
+          _selectedAddon["${value.type}_${value.id}"] = item;
+
           final extra = value.extra?.firstWhereOrNull((extra) {
             return extra.name == "genre";
           });
@@ -133,8 +138,6 @@ class _ExploreAddonState extends State<ExploreAddon> {
         }
       }
     }
-
-    this.selectedAddon = selectedAddon;
 
     this.genres = genres.toList();
   }

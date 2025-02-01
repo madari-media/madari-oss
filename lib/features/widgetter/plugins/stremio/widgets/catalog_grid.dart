@@ -318,32 +318,34 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
                   ),
                 ),
                 const Spacer(),
-                SizedBox(
-                  height: 34,
-                  child: TextButton(
-                    onPressed: () {
-                      final query = getQuery();
+                if (!widget.pluginContext.hasSearch)
+                  SizedBox(
+                    height: 34,
+                    child: TextButton(
+                      onPressed: () {
+                        final query = getQuery();
 
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => CatalogFullView(
-                            title: title,
-                            initialItems: allItems,
-                            queryBuilder: () {
-                              return query;
-                            },
-                            prefix: widget.pluginContext.hasSearch.toString() +
-                                widget.pluginContext.index.toString() +
-                                widget.config["description"] +
-                                widget.config["id"] +
-                                widget.config["type"],
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => CatalogFullView(
+                              title: title,
+                              initialItems: allItems,
+                              queryBuilder: () {
+                                return query;
+                              },
+                              prefix:
+                                  widget.pluginContext.hasSearch.toString() +
+                                      widget.pluginContext.index.toString() +
+                                      widget.config["description"] +
+                                      widget.config["id"] +
+                                      widget.config["type"],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: const Text("Show more"),
+                        );
+                      },
+                      child: const Text("Show more"),
+                    ),
                   ),
-                ),
               ],
             ),
             SizedBox(
