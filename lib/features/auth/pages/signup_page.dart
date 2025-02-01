@@ -466,7 +466,7 @@ class _SignUpPageState extends State<SignUpPage>
         "name": _nameController.text.trim(),
       };
 
-      final user = await pocketbase.collection('users').create(body: userData);
+      await pocketbase.collection('users').create(body: userData);
 
       await pocketbase.collection('users').authWithPassword(
             _emailController.text.trim(),
@@ -491,6 +491,9 @@ class _SignUpPageState extends State<SignUpPage>
       }
 
       await LayoutService.instance.addAllHomeWidgets();
+
+      final addons = StremioAddonService.instance.getInstalledAddons();
+      await addons.refetch();
 
       if (mounted) {
         context.go('/profile');

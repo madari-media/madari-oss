@@ -28,7 +28,7 @@ class _ExploreAddonState extends State<ExploreAddon> {
   String? selectedId;
   String? selectedGenre;
   StremioManifest? selectedAddon;
-  static const int pageSize = 50;
+  static const int pageSize = 20;
   final service = StremioAddonService.instance;
 
   InfiniteQuery<List<Meta>, int>? _query;
@@ -344,8 +344,10 @@ class _ExploreAddonState extends State<ExploreAddon> {
                 ? CatalogFullView(
                     initialItems: const [],
                     prefix: "explore",
-                    query: buildQuery(),
                     key: ValueKey(queryKey),
+                    queryBuilder: () {
+                      return buildQuery();
+                    },
                   )
                 : const Center(
                     child: CircularProgressIndicator(),

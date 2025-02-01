@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/home/pages/home_page.dart';
 import 'package:madari_client/features/settings/service/selected_profile.dart';
+import 'package:madari_client/features/widgetter/plugins/stremio/utils/size.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../../widgetter/plugin_base.dart';
@@ -12,7 +13,9 @@ import '../../widgetter/types/widget_gallery.dart';
 final _logger = Logger('LayoutPage');
 
 class LayoutPage extends StatefulWidget {
-  const LayoutPage({super.key});
+  const LayoutPage({
+    super.key,
+  });
 
   @override
   State<LayoutPage> createState() => _LayoutPageState();
@@ -26,7 +29,6 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
   bool isDragging = false;
   double dragHeight = 320;
   final double _minCellWidth = 150;
-  int _crossAxisCount = 2;
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
 
@@ -344,7 +346,7 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
                     children: [
                       Icon(
                         Icons.widgets_outlined,
-                        size: 32,
+                        size: 22,
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
@@ -515,10 +517,11 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
                     child: GridView.builder(
                       padding: const EdgeInsets.all(16),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: _crossAxisCount,
+                        crossAxisCount:
+                            StremioCardSize.getSize(context).columns,
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 1.5,
+                        childAspectRatio: 1,
                       ),
                       itemCount: widgets.length,
                       itemBuilder: (context, index) {

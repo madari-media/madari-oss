@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../provider/theme_provider.dart';
@@ -8,6 +9,7 @@ class AppTheme {
   static final AppTheme _instance = AppTheme._internal();
   static const String _primaryColorKey = 'primary_color';
   static const String _isDarkModeKey = 'is_dark_mode';
+  final _logger = Logger('AppTheme');
 
   factory AppTheme() {
     return _instance;
@@ -37,6 +39,7 @@ class AppTheme {
     _themeProvider.toggleTheme();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_isDarkModeKey, _themeProvider.isDarkMode);
+    _logger.info("isDarkMode ${_themeProvider.isDarkMode}");
   }
 
   Future<void> setPrimaryColor(Color color) async {

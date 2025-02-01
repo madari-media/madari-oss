@@ -132,6 +132,8 @@ class StremioManifestCatalog {
   String type;
   String id;
   String? name;
+  @JsonKey(name: "itemCount", defaultValue: 50)
+  final int itemCount;
   final List<StremioManifestCatalogExtra>? extra;
   @JsonKey(name: "extraRequired")
   final List<String>? extraRequired_;
@@ -181,6 +183,7 @@ class StremioManifestCatalog {
     this.name,
     this.extraRequired_,
     this.extraSupported_,
+    this.itemCount = 50,
   });
 
   factory StremioManifestCatalog.fromRecord(RecordModel record) =>

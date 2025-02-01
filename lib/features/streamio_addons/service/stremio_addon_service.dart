@@ -285,8 +285,6 @@ class StremioAddonService {
   ) async {
     String url = "${_getAddonBaseURL(manifest.manifestUrl!)}/catalog/$type/$id";
 
-    const perPage = 50;
-
     final catalog = manifest.catalogs?.firstWhereOrNull((item) {
       return item.type == type && item.id == id;
     });
@@ -341,7 +339,25 @@ class StremioAddonService {
       return [];
     }
 
+    final isSearch = items.firstWhereOrNull((item) {
+          return item.title == "search";
+        }) !=
+        null;
+
+    const perPage = 50;
+
     if (manifest.manifestVersion == "v2") {
+      if (page != null &&
+          catalog.extraSupported?.contains("skip") == true &&
+          !isSearch) {
+        items.add(
+          ConnectionFilterItem(
+            title: "skip",
+            value: page * catalog.itemCount,
+          ),
+        );
+      }
+
       if (items.isNotEmpty) {
         String filterPath = items
             .map((filter) {
@@ -360,11 +376,6 @@ class StremioAddonService {
           url += "?$filterPath";
         }
       }
-
-      final isSearch = items.firstWhereOrNull((item) {
-            return item.title == "search";
-          }) !=
-          null;
 
       if (page != null &&
           catalog.extraSupported?.contains("skip") == true &&

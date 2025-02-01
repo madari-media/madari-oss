@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../../common/utils/error_handler.dart';
@@ -37,11 +38,6 @@ class _SignInPageState extends State<SignInPage>
     super.initState();
     _setupAnimations();
     _animationController.forward();
-
-    // Set initial focus to email field
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(_emailFocusNode);
-    });
   }
 
   void _setupAnimations() {
@@ -91,81 +87,58 @@ class _SignInPageState extends State<SignInPage>
           ),
         );
       },
-      child: RawKeyboardListener(
-        focusNode: FocusNode(),
-        onKey: (RawKeyEvent event) {
-          if (event is RawKeyDownEvent) {
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              if (focusNode == _emailFocusNode) {
-                FocusScope.of(context).requestFocus(_passwordFocusNode);
-              } else if (focusNode == _passwordFocusNode) {
-                FocusScope.of(context).requestFocus(_forgotPasswordFocusNode);
-              }
-            } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              if (focusNode == _passwordFocusNode) {
-                FocusScope.of(context).requestFocus(_emailFocusNode);
-              } else if (focusNode == _forgotPasswordFocusNode) {
-                FocusScope.of(context).requestFocus(_passwordFocusNode);
-              }
-            }
-          }
-        },
-        child: TextFormField(
-          controller: controller,
-          focusNode: focusNode,
-          obscureText: isPassword ? _obscurePassword : false,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          autofillHints: autofillHints,
-          onEditingComplete: onEditingComplete,
-          style: Theme.of(context).textTheme.bodyLarge,
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(icon),
-            suffixIcon: isPassword
-                ? IconButton(
-                    focusNode: FocusNode(),
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    tooltip:
-                        _obscurePassword ? 'Show password' : 'Hide password',
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+      child: TextFormField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: isPassword ? _obscurePassword : false,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        autofillHints: autofillHints,
+        onEditingComplete: onEditingComplete,
+        style: Theme.of(context).textTheme.bodyLarge,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          suffixIcon: isPassword
+              ? IconButton(
+                  focusNode: FocusNode(),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outline,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 0.5),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              ),
-            ),
-            filled: true,
-            fillColor: Theme.of(context).colorScheme.surface,
           ),
-          validator: validator,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color:
+                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          ),
+          filled: true,
+          fillColor: Theme.of(context).colorScheme.surface,
         ),
+        validator: validator,
       ),
     );
   }
@@ -481,6 +454,9 @@ class _SignInPageState extends State<SignInPage>
             _emailController.text.trim(),
             _passwordController.text,
           );
+
+      final addons = StremioAddonService.instance.getInstalledAddons();
+      await addons.refetch();
 
       if (mounted) {
         context.go('/profile');

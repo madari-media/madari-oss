@@ -23,7 +23,7 @@ class _AddAddonSheetState extends State<AddAddonSheet> {
   bool _isInstalling = false;
 
   final _exampleAddons = {
-    "Cinemeta": "https://v3-cinemeta.strem.io/manifest.json",
+    "Madari Catalog": "https://catalog.madari.media/manifest.json",
     "Watchhub": "https://watchhub.strem.io/manifest.json",
     "Subtitles": "https://opensubtitles-v3.strem.io/manifest.json",
   };

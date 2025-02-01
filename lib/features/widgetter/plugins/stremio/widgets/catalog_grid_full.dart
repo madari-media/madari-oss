@@ -1,24 +1,29 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/stremio_card.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../streamio_addons/models/stremio_base_types.dart';
 import '../utils/size.dart';
 
+typedef GetQuery = InfiniteQuery<List<Meta>, int> Function();
+
 class CatalogFullView extends StatefulWidget {
   final List<Meta> initialItems;
-  final InfiniteQuery<List<Meta>, int> query;
   final String prefix;
   final String? title;
+  final GetQuery queryBuilder;
+  final bool supportsLoadMore;
 
   const CatalogFullView({
     super.key,
     required this.initialItems,
-    required this.query,
     required this.prefix,
+    required this.queryBuilder,
     this.title,
+    this.supportsLoadMore = false,
   });
 
   @override
@@ -27,19 +32,31 @@ class CatalogFullView extends StatefulWidget {
 
 class _CatalogFullViewState extends State<CatalogFullView> {
   final ScrollController _scrollController = ScrollController();
+  final _logger = Logger("CatalogFullView");
 
-  late final InfiniteQuery<List<Meta>, int> _query = widget.query;
+  late final InfiniteQuery<List<Meta>, int> _query;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _query = widget.queryBuilder();
+  }
 
   Future<void> _loadMoreData() async {
     final currentState = _query.state;
 
     if (currentState.lastPage != null && currentState.lastPage!.isEmpty) {
+      _logger.info("Last page is empty");
       return;
     }
 
     if (currentState.status == QueryStatus.loading) {
+      _logger.info("Status is loading");
       return;
     }
+
+    _logger.info("Loading next page");
 
     await _query.getNextPage();
   }

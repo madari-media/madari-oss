@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
@@ -113,7 +114,7 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
             items,
           );
 
-          return result;
+          return result.sublist(0, min(pageSize, result.length));
         } catch (e, stack) {
           _logger.severe('Error fetching catalog: $e', e, stack);
           throw Exception('Failed to fetch catalog');
@@ -328,7 +329,9 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
                           builder: (context) => CatalogFullView(
                             title: title,
                             initialItems: allItems,
-                            query: query,
+                            queryBuilder: () {
+                              return query;
+                            },
                             prefix: widget.pluginContext.hasSearch.toString() +
                                 widget.pluginContext.index.toString() +
                                 widget.config["description"] +
@@ -379,7 +382,8 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
     required String title,
   }) {
     final allItems = state.data?.expand((page) => page).toList() ?? [];
-    final itemCount = allItems.take(15).length + (allItems.isNotEmpty ? 1 : 0);
+    final itemCount = allItems.take(15).length +
+        (!(allItems.isNotEmpty && widget.pluginContext.hasSearch) ? 1 : 0);
 
     if (allItems.isEmpty) {
       return const SizedBox(
@@ -464,7 +468,9 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
                 MaterialPageRoute(
                   builder: (context) => CatalogFullView(
                     title: title,
-                    query: getQuery(),
+                    queryBuilder: () {
+                      return getQuery();
+                    },
                     initialItems: [],
                     prefix: widget.pluginContext.hasSearch.toString() +
                         widget.pluginContext.index.toString() +

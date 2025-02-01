@@ -121,7 +121,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         onTap: () {
                           if (AppTheme().getCurrentTheme().brightness ==
                               Brightness.dark) {
-                            setState(() => AppTheme().toggleTheme());
+                            AppTheme().toggleTheme();
                           }
                         },
                         child: Column(
@@ -160,7 +160,7 @@ class _AppearancePageState extends State<AppearancePage> {
                         onTap: () {
                           if (AppTheme().getCurrentTheme().brightness ==
                               Brightness.light) {
-                            setState(() => AppTheme().toggleTheme());
+                            AppTheme().toggleTheme();
                           }
                         },
                         child: Column(
