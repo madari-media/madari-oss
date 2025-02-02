@@ -2,13 +2,42 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
+import 'package:madari_client/utils/array-extension.dart';
 
 import '../../../../library/container/add_to_list_button.dart';
+import '../../../../streamio_addons/service/stremio_addon_service.dart';
 import 'stream_list.dart';
 
 final _logger = Logger('StreamioComponents');
 
-Future<void> openVideoStream(BuildContext context, Meta meta) async {
+Future<String?> openVideoStream(
+  BuildContext context,
+  Meta meta, {
+  bool shouldPop = false,
+  String? bingGroup,
+}) async {
+  final service = StremioAddonService.instance;
+
+  if (bingGroup != null) {
+    final result = await Future(() async {
+      final List<VideoStream> items = [];
+
+      await service.getStreams(meta, callback: (item, addonName, error) {
+        if (item != null) items.addAll(item);
+      });
+
+      return items;
+    });
+
+    final firstVideo = result.firstWhereOrNull((item) {
+      return item.behaviorHints?["bingeGroup"] == bingGroup && item.url != null;
+    });
+
+    if (firstVideo != null) {
+      return firstVideo.url!;
+    }
+  }
+
   return showModalBottomSheet(
     enableDrag: true,
     constraints: const BoxConstraints(
@@ -20,6 +49,7 @@ Future<void> openVideoStream(BuildContext context, Meta meta) async {
     builder: (context) {
       return Scaffold(
         body: StreamioStreamList(
+          shouldPop: shouldPop,
           meta: meta.type == "series"
               ? meta.copyWith(
                   selectedVideoIndex: meta.selectedVideoIndex ?? 0,

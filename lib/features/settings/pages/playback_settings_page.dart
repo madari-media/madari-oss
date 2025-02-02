@@ -82,7 +82,7 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
 
   Widget _buildSubtitlePreview(PlaybackSettings settings) {
     return Container(
-      height: 120,
+      height: 100,
       decoration: BoxDecoration(
         color: Colors.black87,
         borderRadius: BorderRadius.circular(8),
@@ -97,7 +97,7 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: settings.subtitleColor,
-                  fontSize: settings.fontSize,
+                  fontSize: 14 * settings.fontSize,
                   shadows: [
                     Shadow(
                       color: Colors.black.withOpacity(0.8),
@@ -320,17 +320,19 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Font Size'),
+                          const Text('Font Scale'),
                           Row(
                             children: [
-                              const Text('11'),
+                              const Text('0.1'),
                               Expanded(
                                 child: Slider(
-                                  value: settings.fontSize,
-                                  min: 11,
-                                  max: 60,
-                                  divisions: 49,
-                                  label: settings.fontSize.round().toString(),
+                                  value: settings.fontSize.clamp(0.1, 2.5),
+                                  min: 0.1,
+                                  max: 2.5,
+                                  divisions: 50,
+                                  label: settings.fontSize
+                                      .toStringAsFixed(2)
+                                      .toString(),
                                   onChanged: (value) {
                                     setState(() {
                                       settings.fontSize = value;
@@ -340,7 +342,7 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                                   },
                                 ),
                               ),
-                              const Text('60'),
+                              const Text('2.5'),
                             ],
                           ),
                         ],
@@ -381,12 +383,12 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                         Text("${settings.bufferSize} MB"),
                         Row(
                           children: [
-                            const Text('32 MB'),
+                            const Text('12 MB'),
                             Expanded(
                               child: Slider(
                                 value: settings.bufferSize.toDouble(),
-                                min: 32,
-                                max: 2024,
+                                min: 12,
+                                max: 5120,
                                 label: settings.bufferSize.round().toString(),
                                 onChanged: (value) {
                                   setState(() {
@@ -397,7 +399,7 @@ class _PlaybackSettingsPageState extends State<PlaybackSettingsPage> {
                                 },
                               ),
                             ),
-                            const Text('2024 MB'),
+                            const Text('${5120} MB'),
                           ],
                         ),
                       ],

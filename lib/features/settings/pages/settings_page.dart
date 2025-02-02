@@ -93,20 +93,42 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
-      const _SettingsCategory(
+      _SettingsCategory(
         title: 'System',
         items: [
-          _SettingsItem(
+          const _SettingsItem(
             title: 'Debug',
             icon: Icons.bug_report,
             path: '/settings/debug',
             description: 'Debug options and logs',
           ),
-          _SettingsItem(
+          const _SettingsItem(
             title: 'Offline Ratings',
             icon: Icons.offline_bolt,
             path: '/settings/offline-ratings',
             description: 'Configure offline ratings',
+          ),
+          _SettingsItem(
+            title: 'About US',
+            icon: Icons.perm_identity,
+            description: 'About US',
+            onClick: () {
+              showAboutDialog(
+                context: context,
+                applicationIcon: const Image(
+                  width: 28,
+                  image: AssetImage("assets/icon/icon_mini.png"),
+                ),
+                children: [
+                  const Text("Powered by TMDB"),
+                  const Image(
+                    image: NetworkImage(
+                      "https://upload.wikimedia.org/wikipedia/commons/6/6e/Tmdb-312x276-logo.png",
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

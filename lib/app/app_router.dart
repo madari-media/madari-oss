@@ -185,6 +185,7 @@ GoRouter createRouterDesktop() {
           stream: state.pathParameters["stream"]!,
           selectedIndex: state.uri.queryParameters["index"],
           meta: state.extra is Map ? (state.extra as Map)["meta"] : null,
+          bingGroup: state.uri.queryParameters["binge-group"],
         ),
       ),
       GoRoute(

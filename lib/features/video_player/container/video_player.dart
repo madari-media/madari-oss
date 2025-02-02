@@ -6,6 +6,8 @@ import 'package:madari_client/features/settings/model/playback_settings_model.da
 import 'package:madari_client/features/settings/service/playback_setting_service.dart';
 import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/features/video_player/container/video_play.dart';
+import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_background.dart';
+import 'package:rxdart/rxdart.dart';
 
 class VideoPlayer extends StatefulWidget {
   final String stream;
@@ -13,6 +15,7 @@ class VideoPlayer extends StatefulWidget {
   final String id;
   final String type;
   final String? selectedIndex;
+  final String? bingGroup;
 
   const VideoPlayer({
     super.key,
@@ -21,28 +24,32 @@ class VideoPlayer extends StatefulWidget {
     required this.meta,
     required this.stream,
     this.selectedIndex,
+    this.bingGroup,
   });
 
   @override
   State<VideoPlayer> createState() => _VideoPlayerState();
+
+  int get index {
+    if (selectedIndex == "null" || selectedIndex == "") {
+      return 0;
+    }
+
+    return int.tryParse(selectedIndex ?? "0") ?? 0;
+  }
 }
 
 class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
   final _logger = Logger('VideoPlayer');
-
   late final Query<PlaybackSettings> _playbackSettings;
-
   bool _isMounted = false;
-
+  late String stream = widget.stream;
   String? _errorMessage;
-
-  int get index {
-    if (widget.selectedIndex == "null" || widget.selectedIndex == "") {
-      return 0;
-    }
-
-    return int.tryParse(widget.selectedIndex ?? "0") ?? 0;
-  }
+  late Meta meta = widget.meta;
+  late int index = widget.index;
+  late final BehaviorSubject<int> updateSubject = BehaviorSubject.seeded(
+    widget.index,
+  );
 
   @override
   void initState() {
@@ -149,11 +156,33 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
                 extendBody: true,
                 extendBodyBehindAppBar: true,
                 body: VideoPlay(
-                  stream: widget.stream,
-                  meta: widget.meta,
+                  updateSubject: updateSubject,
+                  onVideoChange: (index) async {
+                    final result = await openVideoStream(
+                      context,
+                      widget.meta.copyWith(
+                        selectedVideoIndex: index,
+                      ),
+                      shouldPop: true,
+                      bingGroup: widget.bingGroup,
+                    );
+
+                    if (result == null) return false;
+
+                    setState(() {
+                      this.index = index;
+                      stream = result;
+                    });
+
+                    updateSubject.add(index);
+
+                    return true;
+                  },
+                  stream: stream,
+                  meta: meta,
+                  data: state.data!,
                   bufferSize: state.data?.bufferSize ?? 32,
                   index: index,
-                  key: ValueKey('${widget.id}_${widget.selectedIndex}'),
                   enabledHardwareAcceleration:
                       state.data?.disableHardwareAcceleration != true,
                   poster: widget.meta.poster,

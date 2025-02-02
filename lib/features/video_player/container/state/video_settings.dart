@@ -5,7 +5,8 @@ class VideoSettingsProvider extends ChangeNotifier {
   double _subtitleDelay = 0.0;
   double _audioDelay = 0.0;
   bool _isLocked = false;
-  Color _subtitleBackgroundColor = Colors.black;
+  Color _subtitleBackgroundColor = Colors.transparent;
+  Color _subtitleColor = Colors.white;
   double _subtitleOpacity = 0.6;
   bool _isFilled = false;
 
@@ -14,6 +15,7 @@ class VideoSettingsProvider extends ChangeNotifier {
   double get audioDelay => _audioDelay;
   bool get isLocked => _isLocked;
   Color get subtitleBackgroundColor => _subtitleBackgroundColor;
+  Color get subtitleColor => _subtitleColor;
   double get subtitleOpacity => _subtitleOpacity;
   bool get isFilled => _isFilled;
 
@@ -54,6 +56,11 @@ class VideoSettingsProvider extends ChangeNotifier {
 
   void setSubtitleBackgroundColor(Color color) {
     _subtitleBackgroundColor = color;
+    notifyListeners();
+  }
+
+  void setSubtitleColor(Color color) {
+    _subtitleColor = color;
     notifyListeners();
   }
 

@@ -64,7 +64,7 @@ class StremioCatalogPlugin extends PluginBase {
       }
 
       for (final catalog in item.catalogs!) {
-        final hasSearch = catalog.extraRequired?.contains("search") ?? false;
+        final hasSearch = catalog.extraSupported?.contains("search") ?? false;
 
         final result = PresetWidgetConfig(
           title: "${catalog.name ?? ""} ${catalog.type.capitalize}",

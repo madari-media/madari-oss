@@ -12,10 +12,12 @@ final _logger = Logger('StreamioStreamList');
 
 class StreamioStreamList extends StatefulWidget {
   final Meta meta;
+  final bool shouldPop;
 
   const StreamioStreamList({
     super.key,
     required this.meta,
+    required this.shouldPop,
   });
 
   @override
@@ -37,11 +39,11 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
   final Set<String> _selectedAddons = {};
   final Map<String, List<StreamWithAddon>> streamsByAddon = {};
 
-  Set<String> _resolutions = {};
-  Set<String> _qualities = {};
-  Set<String> _codecs = {};
-  Set<String> _audios = {};
-  Set<String> _sizes = {};
+  final Set<String> _resolutions = {};
+  final Set<String> _qualities = {};
+  final Set<String> _codecs = {};
+  final Set<String> _audios = {};
+  final Set<String> _sizes = {};
   final Set<String> _addons = {};
 
   @override
@@ -385,6 +387,7 @@ class _StreamioStreamListState extends State<StreamioStreamList> {
                       return StreamCard(
                         streamWithAddon: streamData,
                         meta: widget.meta,
+                        shouldPop: widget.shouldPop,
                       );
                     },
                   ),
@@ -399,7 +402,10 @@ class StreamWithAddon {
   final VideoStream stream;
   final String? addonName;
 
-  StreamWithAddon({required this.stream, this.addonName});
+  StreamWithAddon({
+    required this.stream,
+    this.addonName,
+  });
 
   StreamWithAddon copy() {
     return StreamWithAddon(
@@ -451,15 +457,17 @@ class StreamTag extends StatelessWidget {
 class StreamCard extends StatelessWidget {
   final StreamWithAddon streamWithAddon;
   final Meta meta;
+  final bool shouldPop;
 
   const StreamCard({
     super.key,
     required this.meta,
     required this.streamWithAddon,
+    required this.shouldPop,
   });
 
   VideoStream get stream {
-    return streamWithAddon.stream.copyWith();
+    return streamWithAddon.stream;
   }
 
   @override
@@ -472,6 +480,11 @@ class StreamCard extends StatelessWidget {
       onTap: stream.url != null
           ? () async {
               if (stream.url != null) {
+                if (shouldPop) {
+                  Navigator.pop(context, stream.url);
+                  return;
+                }
+
                 final settings =
                     await PlaybackSettingsService.instance.getSettings();
 
