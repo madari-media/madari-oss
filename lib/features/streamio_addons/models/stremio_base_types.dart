@@ -132,7 +132,7 @@ class StremioManifestCatalog {
   String type;
   String id;
   String? name;
-  @JsonKey(name: "itemCount", defaultValue: 50)
+  @JsonKey(name: "itemCount")
   final int itemCount;
   final List<StremioManifestCatalogExtra>? extra;
   @JsonKey(name: "extraRequired")

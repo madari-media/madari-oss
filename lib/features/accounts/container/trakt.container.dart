@@ -1,180 +1,230 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../common/utils/refresh_auth.dart';
-import '../../pocketbase/service/pocketbase.service.dart';
+import '../service/zeku_service.dart';
 
-class TraktContainer extends StatefulWidget {
-  const TraktContainer({super.key});
+class ServicesGrid extends StatefulWidget {
+  const ServicesGrid({super.key});
 
   @override
-  State<TraktContainer> createState() => _TraktContainerState();
+  State<ServicesGrid> createState() => _ServicesGridState();
 }
 
-class _TraktContainerState extends State<TraktContainer> {
-  final pb = AppPocketBaseService.instance.pb;
-  bool isLoggedIn = false;
-  bool isLoading = false;
+class _ServicesGridState extends State<ServicesGrid> {
+  final _zekuService = ZekuService();
+  late Future<List<ZekuServiceItem>> _servicesFuture;
 
   @override
   void initState() {
     super.initState();
-    checkIsLoggedIn();
-  }
-
-  void checkIsLoggedIn() {
-    final traktToken = pb.authStore.record!.getStringValue("trakt_token");
-    setState(() {
-      isLoggedIn = traktToken != "";
-    });
-  }
-
-  Future<void> removeAccount() async {
-    setState(() => isLoading = true);
-    try {
-      final record = pb.authStore.record!;
-      record.set("trakt_token", "");
-
-      await pb.collection('users').update(
-            record.id,
-            body: record.toJson(),
-          );
-
-      await refreshAuth();
-      setState(() {
-        isLoggedIn = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
-  }
-
-  Future<void> loginWithTrakt() async {
-    setState(() => isLoading = true);
-    try {
-      await pb.collection("users").authWithOAuth2(
-        "oidc",
-        (url) async {
-          final newUrl = Uri.parse(
-            url.toString().replaceFirst(
-                  "scope=openid&",
-                  "",
-                ),
-          );
-          await launchUrl(newUrl);
-        },
-        scopes: ["openid"],
-      );
-
-      await refreshAuth();
-      checkIsLoggedIn();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
+    _servicesFuture = _zekuService.getServices();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final screenWidth = MediaQuery.of(context).size.width;
 
-    final isDesktopOrTV = screenWidth > 1024;
-    final isTablet = screenWidth > 600 && screenWidth <= 1024;
-    final horizontalPadding = isDesktopOrTV
-        ? screenWidth * 0.2
-        : isTablet
-            ? 48.0
-            : 24.0;
+    return FutureBuilder<List<ZekuServiceItem>>(
+      future: _servicesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: theme.colorScheme.primary,
+            ),
+          );
+        }
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: 24,
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              isLoggedIn ? 'Connected to Trakt' : 'Connect with Trakt',
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isLoggedIn
-                  ? 'Your Trakt account is connected'
-                  : 'Sign in to track your movies and shows',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 50,
-              child: FilledButton(
-                onPressed: isLoading
-                    ? null
-                    : (isLoggedIn ? removeAccount : loginWithTrakt),
-                style: FilledButton.styleFrom(
-                  backgroundColor:
-                      isLoggedIn ? colorScheme.error : colorScheme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ).copyWith(
-                  overlayColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.hovered)) {
-                      return colorScheme.onPrimary.withValues(alpha: 0.08);
-                    }
-                    if (states.contains(WidgetState.pressed)) {
-                      return colorScheme.onPrimary.withValues(alpha: 0.12);
-                    }
-                    return null;
-                  }),
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: theme.colorScheme.error,
+                  size: 48,
                 ),
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        isLoggedIn
-                            ? 'Disconnect Account'
-                            : 'Connect with Trakt',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load services',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${snapshot.error}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _servicesFuture = _zekuService.getServices();
+                    });
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final services = snapshot.data ?? [];
+
+        if (services.isEmpty) {
+          return Center(
+            child: Text(
+              'No services available',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
               ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(0),
+          itemCount: services.length,
+          itemBuilder: (context, index) {
+            final service = services[index];
+            return ServiceCard(
+              service: service,
+              onRefresh: () {
+                setState(() {
+                  _servicesFuture = _zekuService.getServices();
+                });
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class ServiceCard extends StatefulWidget {
+  final ZekuServiceItem service;
+  final VoidCallback onRefresh;
+
+  const ServiceCard({
+    super.key,
+    required this.service,
+    required this.onRefresh,
+  });
+
+  @override
+  State<ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<ServiceCard> {
+  authenticate() async {
+    await ZekuService.instance.authenticate();
+
+    showAdaptiveDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Authenticated?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              child: const Text("Refresh"),
+              onPressed: () {
+                widget.onRefresh();
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  disconnect(String service) async {
+    await ZekuService.instance.removeSession(service);
+    widget.onRefresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 60,
+                height: 60,
+                child: CachedNetworkImage(
+                  imageUrl: widget.service.logo,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.service.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.service.website,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                if (widget.service.enabled) {
+                  disconnect(widget.service.name);
+                } else {
+                  authenticate();
+                }
+              },
+              child: widget.service.enabled
+                  ? const Text("Disconnect")
+                  : const Text("Authenticate"),
             ),
           ],
         ),

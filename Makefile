@@ -9,7 +9,7 @@ schema:
 	dart run drift_dev schema dump lib/database/database.dart drift_schemas/drift_schema_v1.json
 
 build_web:
-	flutter build web --target lib/main_web.dart --release --pwa-strategy none --wasm --dart-define=BUILD_ID=$(BUILD_ID)
+	flutter build web --target lib/main_web.dart --release --pwa-strategy none --web-renderer html --dart-define=BUILD_ID=$(BUILD_ID)
 
 build_mac:
 	flutter build macos --target lib/main.dart --release --dart-define=BUILD_ID=$(BUILD_ID)

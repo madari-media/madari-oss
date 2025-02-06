@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/settings/model/playback_settings_model.dart';
+import 'package:madari_client/features/video_player/container/native.dart';
 import 'package:madari_client/features/video_player/container/state/video_settings.dart';
 import 'package:madari_client/features/video_player/container/video_desktop.dart';
 import 'package:madari_client/features/video_player/container/video_mobile.dart';
@@ -100,8 +101,9 @@ class _VideoPlayState extends State<VideoPlay> {
     final platform = player.platform;
     if (platform is NativePlayer) {
       _debouncer.run(() {
-        platform.setProperty('sub-delay', "${-_settings.subtitleDelay}");
-        platform.setProperty('audio-delay', "${-_settings.audioDelay}");
+        if (!UniversalPlatform.isWeb) {
+          setDelay(platform, _settings);
+        }
       });
     }
   }
@@ -147,6 +149,8 @@ class _VideoPlayState extends State<VideoPlay> {
     return VideoDesktop(
       controller: controller,
       meta: widget.meta,
+      onVideoChange: widget.onVideoChange,
+      updateSubject: widget.updateSubject,
     );
   }
 }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:madari_client/app/app_web.dart';
 import 'package:provider/provider.dart';
 
+import 'app/app.dart';
 import 'features/common/utils/startup_app.dart';
 import 'features/logger/service/logger.service.dart';
 import 'features/theme/theme/app_theme.dart';
+import 'features/widgetter/state/widget_state_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,10 @@ void main() async {
   runApp(
     ChangeNotifierProvider.value(
       value: AppTheme().themeProvider,
-      child: const AppWeb(),
+      child: ChangeNotifierProvider(
+        create: (context) => StateProvider(),
+        child: const AppDefault(),
+      ),
     ),
   );
 }

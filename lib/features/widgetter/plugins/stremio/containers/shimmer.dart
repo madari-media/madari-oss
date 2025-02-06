@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:universal_platform/universal_platform.dart';
 
 final _logger = Logger('StreamioShimmer');
 
@@ -62,7 +63,10 @@ class StreamioShimmer extends StatelessWidget {
                                   image: image != null
                                       ? DecorationImage(
                                           image: CachedNetworkImageProvider(
-                                              image!),
+                                            UniversalPlatform.isWeb
+                                                ? "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(image!)}@webp"
+                                                : image!,
+                                          ),
                                           fit: BoxFit.cover,
                                         )
                                       : null,

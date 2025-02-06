@@ -158,7 +158,6 @@ class _VideoMobileState extends State<VideoMobile> {
           Expanded(
             child: VideoTitle(
               meta: widget.meta!,
-              index: widget.index,
               updateSubject: widget.updateSubject,
             ),
           ),
@@ -255,13 +254,11 @@ class _VideoMobileState extends State<VideoMobile> {
 
 class VideoTitle extends StatefulWidget {
   final types.Meta meta;
-  final int index;
   final BehaviorSubject<int> updateSubject;
 
   const VideoTitle({
     super.key,
     required this.meta,
-    required this.index,
     required this.updateSubject,
   });
 
@@ -270,7 +267,7 @@ class VideoTitle extends StatefulWidget {
 }
 
 class _VideoTitleState extends State<VideoTitle> {
-  late int index = widget.index;
+  late int index = widget.updateSubject.value;
 
   late StreamSubscription<int> _updateStatus;
 

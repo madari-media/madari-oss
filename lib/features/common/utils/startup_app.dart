@@ -21,6 +21,19 @@ Future startupApp() async {
   await AppTheme().ensureInitialized();
   await SelectedProfileService.instance.initialize();
 
+  final pb = AppPocketBaseService.instance.pb;
+  final userCollection = pb.collection("users");
+
+  if (pb.authStore.isValid) {
+    try {
+      final user = await userCollection.authRefresh();
+
+      pb.authStore.save(user.token, user.record);
+    } catch (e) {
+      pb.authStore.clear();
+    }
+  }
+
   if (UniversalPlatform.isDesktop) {
     await windowManager.ensureInitialized();
   }
@@ -39,6 +52,9 @@ Future startupApp() async {
       config: QueryConfigFlutter(
         refetchDuration: const Duration(minutes: 60),
         cacheDuration: const Duration(minutes: 60),
+        refetchOnResume: false,
+        refetchOnConnection: false,
+        refetchOnResumeMinBackgroundDuration: const Duration(days: 30),
       ),
     );
   } catch (e) {

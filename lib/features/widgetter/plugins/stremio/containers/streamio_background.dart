@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/utils/array-extension.dart';
+import 'package:universal_platform/universal_platform.dart';
 
 import '../../../../library/container/add_to_list_button.dart';
 import '../../../../streamio_addons/service/stremio_addon_service.dart';
@@ -64,7 +65,10 @@ Future<String?> openVideoStream(
 class StreamioBackground extends StatelessWidget {
   final String? imageUrl;
 
-  const StreamioBackground({super.key, this.imageUrl});
+  const StreamioBackground({
+    super.key,
+    this.imageUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +79,9 @@ class StreamioBackground extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           CachedNetworkImage(
-            imageUrl: imageUrl!,
+            imageUrl: UniversalPlatform.isWeb
+                ? "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(imageUrl!)}@webp"
+                : imageUrl!,
             fit: BoxFit.cover,
             errorWidget: (context, url, error) {
               _logger.warning('Error loading background image', error);
@@ -469,7 +475,9 @@ class _StreamioEpisodeListState extends State<StreamioEpisodeList> {
                                 Hero(
                                   tag: 'episode_thumb_${episode.id}',
                                   child: CachedNetworkImage(
-                                    imageUrl: episode.thumbnail!,
+                                    imageUrl: UniversalPlatform.isWeb
+                                        ? "https://proxy-image.syncws.com/insecure/plain/${episode.thumbnail!}@webp"
+                                        : episode.thumbnail!,
                                     fit: BoxFit.cover,
                                     errorWidget: (context, url, error) {
                                       _logger.warning(

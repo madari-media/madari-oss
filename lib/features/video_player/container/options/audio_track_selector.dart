@@ -24,7 +24,7 @@ class _AudioTrackSelectorState extends State<AudioTrackSelector> {
     }
 
     if (trakt.id == "no") {
-      return "No subtitles";
+      return "No audio";
     }
 
     final result = trakt.language ?? trakt.id;

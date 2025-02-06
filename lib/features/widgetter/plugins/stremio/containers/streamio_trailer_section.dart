@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:universal_platform/universal_platform.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../streamio_addons/models/stremio_base_types.dart';
@@ -68,7 +69,9 @@ class StreamioTrailerSection extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: CachedNetworkImage(
-                            imageUrl: getYoutubeThumbnail(trailer.ytId),
+                            imageUrl: UniversalPlatform.isWeb
+                                ? "https://proxy-image.syncws.com/insecure/plain/${Uri.encodeQueryComponent(getYoutubeThumbnail(trailer.ytId))}@webp"
+                                : getYoutubeThumbnail(trailer.ytId),
                             fit: BoxFit.cover,
                             errorWidget: (context, url, error) {
                               _logger.warning(

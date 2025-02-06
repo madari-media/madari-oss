@@ -63,6 +63,24 @@ class _CatalogFeaturedState extends State<CatalogFeatured> {
     _loadImage();
   }
 
+  void _nextPage() {
+    if (_selectedIndex < widget.meta.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _previousPage() {
+    if (_selectedIndex > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -178,7 +196,6 @@ class _CatalogFeaturedState extends State<CatalogFeatured> {
                                         ),
                                       ),
                                     ),
-                                  // Dark overlay gradient
                                   Container(
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
@@ -194,10 +211,10 @@ class _CatalogFeaturedState extends State<CatalogFeatured> {
                                       ),
                                     ),
                                   ),
-                                  // Dim overlay for consistent text readability
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.2),
                                     ),
                                   ),
                                   Positioned.fill(
@@ -286,6 +303,66 @@ class _CatalogFeaturedState extends State<CatalogFeatured> {
                                       ),
                                     ),
                                   ),
+                                  if (!isMobile)
+                                    Positioned(
+                                      left: 16,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: Center(
+                                        child: AnimatedOpacity(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          opacity:
+                                              _selectedIndex > 0 ? 1.0 : 0.3,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                            ),
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.chevron_left_rounded,
+                                                size: 36,
+                                                color: Colors.white,
+                                              ),
+                                              onPressed: _previousPage,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  if (!isMobile)
+                                    Positioned(
+                                      right: 16,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: Center(
+                                        child: AnimatedOpacity(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          opacity: _selectedIndex <
+                                                  widget.meta.length - 1
+                                              ? 1.0
+                                              : 0.3,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                            ),
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.chevron_right_rounded,
+                                                size: 36,
+                                                color: Colors.white,
+                                              ),
+                                              onPressed: _nextPage,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),

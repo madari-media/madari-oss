@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:madari_client/features/video_player/container/options/settings_sheet.dart';
 import 'package:madari_client/features/video_player/container/state/video_settings.dart';
+import 'package:madari_client/features/video_player/container/video_mobile.dart';
+import 'package:madari_client/features/video_player/container/video_play.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:universal_platform/universal_platform.dart';
 
 import '../../streamio_addons/models/stremio_base_types.dart' as types;
+import '../widgets/video_selector.dart';
 import 'options/always_on_top.dart';
 import 'options/audio_track_selector.dart';
 import 'options/scale_option.dart';
@@ -15,11 +19,15 @@ import 'options/subtitle_selector.dart';
 class VideoDesktop extends StatefulWidget {
   final VideoController controller;
   final types.Meta? meta;
+  final BehaviorSubject<int> updateSubject;
+  final OnVideoChangeCallback onVideoChange;
 
   const VideoDesktop({
     super.key,
     required this.controller,
     required this.meta,
+    required this.updateSubject,
+    required this.onVideoChange,
   });
 
   @override
@@ -34,11 +42,6 @@ class _VideoDesktopState extends State<VideoDesktop> {
     super.initState();
   }
 
-  void _toggleLock(BuildContext context) {
-    final settings = context.read<VideoSettingsProvider>();
-    settings.toggleLock();
-  }
-
   Future<void> _showPopupMenu({
     required BuildContext context,
     required String title,
@@ -49,7 +52,7 @@ class _VideoDesktopState extends State<VideoDesktop> {
       builder: (context) => AlertDialog(
         title: Text(title),
         content: SizedBox(
-          width: 400, // Fixed width for desktop
+          width: 400,
           child: child,
         ),
         backgroundColor: Colors.black87,
@@ -130,14 +133,9 @@ class _VideoDesktopState extends State<VideoDesktop> {
         ),
         if (widget.meta?.currentVideo != null)
           Expanded(
-            child: Text(
-              "${widget.meta?.name} - ${widget.meta?.currentVideo?.name ?? widget.meta?.currentVideo?.title} - S${widget.meta!.currentVideo?.season} E${widget.meta?.currentVideo?.episode}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: VideoTitle(
+              meta: widget.meta!,
+              updateSubject: widget.updateSubject,
             ),
           ),
         if (widget.meta?.currentVideo == null)
@@ -152,6 +150,13 @@ class _VideoDesktopState extends State<VideoDesktop> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+        if (widget.meta is types.Meta && widget.meta?.type == "series")
+          SeasonSource(
+            onVideoChange: widget.onVideoChange,
+            meta: widget.meta!,
+            isMobile: true,
+            updateSubject: widget.updateSubject,
+          ),
       ],
       seekBarThumbColor: Theme.of(context).primaryColorLight,
       seekBarColor: Theme.of(context).primaryColor,
@@ -159,6 +164,12 @@ class _VideoDesktopState extends State<VideoDesktop> {
       bottomButtonBar: [
         const MaterialPlayOrPauseButton(),
         const MaterialDesktopVolumeButton(),
+        if (widget.meta is types.Meta && widget.meta?.type == "series")
+          NextVideo(
+            updateSubject: widget.updateSubject,
+            onVideoChange: widget.onVideoChange,
+            meta: widget.meta!,
+          ),
         const MaterialSkipNextButton(),
         const SizedBox(width: 12),
         const MaterialPositionIndicator(),

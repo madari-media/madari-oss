@@ -35,6 +35,10 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openConnection() {
     return driftDatabase(
       name: 'app_db',
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse("wasm"),
+        driftWorker: Uri.parse("worker"),
+      ),
     );
   }
 

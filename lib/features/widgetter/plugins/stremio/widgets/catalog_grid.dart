@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
@@ -46,7 +45,6 @@ class CatalogGrid extends StatefulWidget {
 class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
   late InfiniteQuery<List<Meta>, int> _query;
   final ScrollController _scrollController = ScrollController();
-  late FocusNode _gridFocusNode;
   final service = StremioAddonService.instance;
   static const int pageSize = 20;
   int _focusedIndex = 0;
@@ -66,10 +64,6 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
 
     return InfiniteQuery(
       key: (id ?? this.id) + state.search.trim(),
-      config: QueryConfig(
-        cacheDuration: const Duration(days: 30),
-        refetchDuration: const Duration(hours: 8),
-      ),
       getNextArg: (state) {
         final lastPage = state.lastPage;
         if (lastPage == null) return 1;
@@ -123,45 +117,6 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
     );
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (!_isFocused) return KeyEventResult.ignored;
-
-    if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
-          event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-        final allItems =
-            _query.state.data?.expand((page) => page).toList() ?? [];
-        final itemCount =
-            allItems.take(15).length + (allItems.isNotEmpty ? 1 : 0);
-
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          setState(() {
-            _focusedIndex = (_focusedIndex + 1).clamp(0, itemCount - 1);
-          });
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          setState(() {
-            _focusedIndex = (_focusedIndex - 1).clamp(0, itemCount - 1);
-          });
-        }
-
-        _scrollToFocusedItem();
-        return KeyEventResult.handled;
-      }
-    }
-    return KeyEventResult.ignored;
-  }
-
-  void _scrollToFocusedItem() {
-    final cardSize = StremioCardSize.getSize(context);
-    final offset = _focusedIndex * (cardSize.width + 8.0);
-
-    _scrollController.animateTo(
-      offset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -170,31 +125,11 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
     _refresh = HomeLayoutService.instance.refreshWidgets.listen((value) {
       _query.refetch();
     });
-
-    _gridFocusNode = FocusNode(
-      debugLabel: 'CatalogGrid-$id',
-      onKeyEvent: _handleKeyEvent,
-    );
-
-    _gridFocusNode.addListener(() {
-      if (mounted) {
-        Scrollable.ensureVisible(
-          context,
-          alignment: 0.3,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-        setState(() {
-          _isFocused = _gridFocusNode.hasFocus;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _gridFocusNode.dispose();
     _refresh.cancel();
     super.dispose();
   }
@@ -398,31 +333,28 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
       );
     }
 
-    return Focus(
-      focusNode: _gridFocusNode,
-      child: ListView.builder(
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        itemCount: itemCount,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemBuilder: (context, index) {
-          if (index == allItems.take(15).length) {
-            return _buildShowMoreCard(
-              context,
-              cardSize,
-              allItems,
-              title: title,
-            );
-          }
-
-          return _buildItemCard(
+    return ListView.builder(
+      controller: _scrollController,
+      scrollDirection: Axis.horizontal,
+      itemCount: itemCount,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemBuilder: (context, index) {
+        if (index == allItems.take(15).length) {
+          return _buildShowMoreCard(
             context,
-            allItems[index],
             cardSize,
-            index == _focusedIndex && _isFocused,
+            allItems,
+            title: title,
           );
-        },
-      ),
+        }
+
+        return _buildItemCard(
+          context,
+          allItems[index],
+          cardSize,
+          index == _focusedIndex && _isFocused,
+        );
+      },
     );
   }
 
