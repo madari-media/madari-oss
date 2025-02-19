@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:provider/provider.dart';
 import 'package:universal_platform/universal_platform.dart';
 
@@ -26,8 +25,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _state = GlobalKey<LayoutManagerState>();
 
-  late StreamSubscription<String?> _selectedProfile;
-
   Widget _buildLogo() {
     return Image.asset(
       'assets/icon/icon_mini.png',
@@ -38,18 +35,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    _selectedProfile =
-        SelectedProfileService.instance.selectedProfileStream.listen((data) {
-      _state.currentState?.refresh();
-    });
-
     super.initState();
   }
 
   @override
   void dispose() {
     super.dispose();
-    _selectedProfile.cancel();
   }
 
   @override

@@ -49,3 +49,10 @@ app.*.map.json
 
 .env
 node_modules
+
+# Rust related
+.cargo/
+target/
+
+# Generated messages
+*/**/messages/

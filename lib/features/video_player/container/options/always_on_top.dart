@@ -28,13 +28,6 @@ class _AlwaysOnTopButtonState extends State<AlwaysOnTopButton> {
   @override
   void dispose() {
     super.dispose();
-
-    windowManager.setAlwaysOnTop(false);
-    windowManager.setTitleBarStyle(TitleBarStyle.normal);
-    setState(() {
-      alwaysOnTop = false;
-    });
-    windowManager.setVisibleOnAllWorkspaces(false);
   }
 
   @override

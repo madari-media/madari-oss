@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:universal_platform/universal_platform.dart';
 
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 import 'cast_info.dart';
 
 class StreamioCastSection extends StatelessWidget {

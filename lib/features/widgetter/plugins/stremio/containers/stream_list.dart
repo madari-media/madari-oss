@@ -4,8 +4,8 @@ import 'package:logging/logging.dart';
 import 'package:madari_client/features/external_player/service/external_player.dart';
 import 'package:madari_client/features/settings/service/playback_setting_service.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
+import 'package:madari_engine/madari_engine.dart';
 
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 import '../../../../streamio_addons/service/stremio_addon_service.dart';
 
 final _logger = Logger('StreamioStreamList');

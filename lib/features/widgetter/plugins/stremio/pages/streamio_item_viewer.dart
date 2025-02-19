@@ -1,8 +1,8 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 import '../containers/shimmer.dart';
 import '../containers/streamio_viewer_content.dart';

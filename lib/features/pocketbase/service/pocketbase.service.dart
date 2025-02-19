@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +9,7 @@ class AppPocketBaseService {
   static AppPocketBaseService? _instance;
 
   late final PocketBase pb;
+  late final MadariEngine engine;
 
   static AppPocketBaseService get instance {
     if (_instance == null) {
@@ -37,5 +39,6 @@ class AppPocketBaseService {
       kDebugMode ? 'http://100.64.0.1:8090' : 'https://api-v2.madari.media',
       authStore: authStore,
     );
+    engine = MadariEngine(pb: pb);
   }
 }

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/stremio_card.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 import '../utils/size.dart';
 
 typedef GetQuery = InfiniteQuery<List<Meta>, int> Function();

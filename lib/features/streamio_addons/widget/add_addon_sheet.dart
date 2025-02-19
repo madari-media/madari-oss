@@ -1,9 +1,9 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-import '../models/stremio_base_types.dart';
 import '../service/stremio_addon_service.dart';
 
 class AddAddonSheet extends StatefulWidget {

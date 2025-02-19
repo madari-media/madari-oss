@@ -1,10 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:universal_platform/universal_platform.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 
 final _logger = Logger('StreamioTrailerSection');
 

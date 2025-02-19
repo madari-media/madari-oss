@@ -2,9 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:universal_platform/universal_platform.dart';
-
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 
 class CatalogFeatured extends StatefulWidget {
   final List<Meta> meta;

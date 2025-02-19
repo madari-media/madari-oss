@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_engine/madari_engine.dart';
 
-import '../../streamio_addons/models/stremio_base_types.dart';
-import '../service/list_service.dart';
-import '../types/library_types.dart';
+import '../../pocketbase/service/pocketbase.service.dart';
 
 class AddToListButton extends StatefulWidget {
   final Meta meta;
@@ -57,7 +56,8 @@ class _AddToListButtonState extends State<AddToListButton> {
     try {
       setState(() => _isLoading = true);
 
-      final lists = await ListsService.instance.getLists();
+      final lists =
+          await AppPocketBaseService.instance.engine.listService.getLists();
       _existingList = lists.cast<ListModel?>().firstWhere(
             (list) =>
                 list?.name.toLowerCase() == widget.listName?.toLowerCase(),
@@ -65,8 +65,8 @@ class _AddToListButtonState extends State<AddToListButton> {
           );
 
       if (_existingList != null) {
-        final items =
-            await ListsService.instance.getListItems(_existingList!.id);
+        final items = await AppPocketBaseService.instance.engine.listService
+            .getListItems(_existingList!.id);
         final existingItem = items.cast<ListItemModel?>().firstWhere(
               (item) => item?.imdbId == widget.meta.imdbId,
               orElse: () => null,
@@ -89,7 +89,8 @@ class _AddToListButtonState extends State<AddToListButton> {
   Future<void> _loadLists() async {
     try {
       setState(() => _isLoading = true);
-      _lists = await ListsService.instance.getLists();
+      _lists =
+          await AppPocketBaseService.instance.engine.listService.getLists();
       setState(() => _isLoading = false);
     } catch (e) {
       _logger.severe('Error loading lists', e);
@@ -102,7 +103,8 @@ class _AddToListButtonState extends State<AddToListButton> {
     try {
       setState(() => _isLoading = true);
 
-      final lists = await ListsService.instance.getLists();
+      final lists =
+          await AppPocketBaseService.instance.engine.listService.getLists();
       ListModel? list = lists.cast<ListModel?>().firstWhere(
             (list) => list?.name.toLowerCase() == listName.toLowerCase(),
             orElse: () => null,
@@ -113,9 +115,11 @@ class _AddToListButtonState extends State<AddToListButton> {
           name: listName,
           description: '',
         );
-        await ListsService.instance.createList(request);
+        await AppPocketBaseService.instance.engine.listService
+            .createList(request);
 
-        final updatedLists = await ListsService.instance.getLists();
+        final updatedLists =
+            await AppPocketBaseService.instance.engine.listService.getLists();
         list = updatedLists.firstWhere(
           (l) => l.name.toLowerCase() == listName.toLowerCase(),
         );
@@ -159,7 +163,8 @@ class _AddToListButtonState extends State<AddToListButton> {
             0.0,
       );
 
-      await ListsService.instance.addListItem(list.id, item);
+      await AppPocketBaseService.instance.engine.listService
+          .addListItem(list.id, item);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -192,7 +197,8 @@ class _AddToListButtonState extends State<AddToListButton> {
       BuildContext context, String itemId, ListModel list) async {
     try {
       setState(() => _isLoading = true);
-      await ListsService.instance.removeListItem(list.id, itemId);
+      await AppPocketBaseService.instance.engine.listService
+          .removeListItem(list.id, itemId);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

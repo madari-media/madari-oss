@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:madari_client/features/accounts/container/trakt.container.dart';
 
 import '../../settings/widget/setting_wrapper.dart';
 
@@ -14,8 +13,8 @@ class ExternalAccount extends StatelessWidget {
       appBar: AppBar(
         title: const Text("External Accounts"),
       ),
-      body: const SettingWrapper(
-        child: ServicesGrid(),
+      body: SettingWrapper(
+        child: Container(),
       ),
     );
   }

@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:madari_client/features/settings/widget/setting_wrapper.dart';
+import 'package:madari_engine/madari_engine.dart';
 
-import '../service/list_service.dart';
+import '../../pocketbase/service/pocketbase.service.dart';
 import '../service/trakt_service.dart';
-import '../types/library_types.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -29,11 +28,6 @@ class _LibraryPageState extends State<LibraryPage> {
   void initState() {
     super.initState();
     _loadLists();
-
-    _item =
-        SelectedProfileService.instance.selectedProfileStream.listen((item) {
-      _loadLists();
-    });
   }
 
   @override
@@ -46,7 +40,8 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _loadLists() async {
     try {
       setState(() => _isLoading = true);
-      final lists = await ListsService.instance.getLists();
+      final lists =
+          await AppPocketBaseService.instance.engine.listService.getLists();
       setState(() {
         _lists = lists;
         _isLoading = false;
@@ -60,7 +55,8 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _refreshLists() async {
     try {
       setState(() => _isRefreshing = true);
-      final lists = await ListsService.instance.getLists();
+      final lists =
+          await AppPocketBaseService.instance.engine.listService.getLists();
       setState(() {
         _lists = lists;
         _isRefreshing = false;
@@ -73,7 +69,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
   Future<void> _deleteList(String listId) async {
     try {
-      await ListsService.instance.deleteList(listId);
+      await AppPocketBaseService.instance.engine.listService.deleteList(listId);
       _loadLists();
     } catch (e) {
       _logger.severe('Error deleting list', e);

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:madari_client/features/pocketbase/service/pocketbase.service.dart';
 import 'package:madari_client/features/settings/pages/settings/profile_selector.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -48,7 +47,6 @@ class SettingsPage extends StatelessWidget {
                 deleteStorage: true,
               );
               AppPocketBaseService.instance.pb.authStore.clear();
-              SelectedProfileService.instance.setSelectedProfile(null);
               context.go("/signin");
             },
           ),

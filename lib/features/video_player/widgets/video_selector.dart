@@ -2,10 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/video_player/container/video_play.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:rxdart/src/subjects/behavior_subject.dart';
-
-import '../../streamio_addons/models/stremio_base_types.dart';
 
 class SeasonSource extends StatefulWidget {
   final Meta meta;

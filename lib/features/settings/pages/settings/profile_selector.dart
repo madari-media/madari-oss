@@ -2,11 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:madari_client/features/pocketbase/service/pocketbase.service.dart';
-import 'package:pocketbase/src/dtos/record_model.dart';
-import 'package:pocketbase/src/dtos/result_list.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:shimmer/shimmer.dart';
-
-import '../../service/selected_profile.dart';
 
 class ProfileSelector extends StatefulWidget {
   const ProfileSelector({super.key});
@@ -16,37 +13,33 @@ class ProfileSelector extends StatefulWidget {
 }
 
 class _ProfileSelectorState extends State<ProfileSelector> {
-  final _selectedProfileService = SelectedProfileService.instance;
+  final profileService = AppPocketBaseService.instance.engine.profileService;
+  late Future<List<UserProfile>> _future;
+  late String selectedProfileId;
 
-  late Future<ResultList<RecordModel>> _future;
-
-  late StreamSubscription<String?> _listener;
+  late StreamSubscription<bool> _listenerNew;
 
   @override
   void initState() {
     super.initState();
 
-    _future = AppPocketBaseService.instance.pb
-        .collection('account_profile')
-        .getList();
+    _future = profileService.getAllProfiles();
 
-    _listener = _selectedProfileService.selectedProfileStream.listen(
-      (item) {
-        if (mounted) {
-          setState(() {
-            _future = AppPocketBaseService.instance.pb
-                .collection('account_profile')
-                .getList();
-          });
-        }
-      },
-    );
+    _listenerNew = profileService.onProfileUpdate.listen((item) {
+      setState(() {
+        _future = profileService.getAllProfiles();
+      });
+    });
+
+    profileService.getCurrentProfile().then((item) {
+      selectedProfileId = item!.id;
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
-    _listener.cancel();
+    _listenerNew.cancel();
   }
 
   Widget _buildShimmerLoading() {
@@ -115,7 +108,7 @@ class _ProfileSelectorState extends State<ProfileSelector> {
           return _buildShimmerLoading();
         }
 
-        final profiles = snapshot.data!.items;
+        final profiles = snapshot.data!;
 
         return GridView.builder(
           shrinkWrap: true,
@@ -131,89 +124,76 @@ class _ProfileSelectorState extends State<ProfileSelector> {
           itemBuilder: (context, index) {
             final profile = profiles[index];
 
-            return StreamBuilder<String?>(
-              stream: _selectedProfileService.selectedProfileStream,
-              builder: (context, snapshot) {
-                final isSelected = snapshot.data == profile.id;
+            final isSelected = selectedProfileId == profile.id;
 
-                return InkWell(
-                  onTap: () async {
-                    final currentSelectedId =
-                        _selectedProfileService.selectedProfileId;
-                    final newSelectedId = currentSelectedId == profile.id
-                        ? profile.id
-                        : profile.id;
-                    await _selectedProfileService
-                        .setSelectedProfile(newSelectedId);
-                  },
+            return InkWell(
+              onTap: () async {
+                profileService.setCurrentProfile(profile.id);
+
+                setState(() {
+                  selectedProfileId = profile.id;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: isSelected
-                          ? colorScheme.primaryContainer.withOpacity(0.3)
-                          : Colors.transparent,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  color: isSelected
+                      ? colorScheme.primaryContainer.withOpacity(0.3)
+                      : Colors.transparent,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
                       children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            if (profile.data['profile_image'] != null &&
-                                profile.data['profile_image'] != "")
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundImage: NetworkImage(
-                                  AppPocketBaseService.instance.pb.files
-                                      .getUrl(
-                                        profile,
-                                        profile.data['profile_image'],
-                                      )
-                                      .toString(),
-                                ),
-                              )
-                            else
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.surfaceVariant,
-                                child: Text(
-                                  profile.data['name'][0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.onSurfaceVariant,
-                                    fontSize: 18,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            profile.data['name'],
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: isSelected ? colorScheme.primary : null,
-                              fontWeight: isSelected ? FontWeight.bold : null,
+                        if (profile.profileImage != null)
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage: NetworkImage(
+                              profile.profileImage!,
                             ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.surfaceContainerHighest,
+                            child: Text(
+                              profile.name[0].toUpperCase(),
+                              style: TextStyle(
+                                color: isSelected
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurfaceVariant,
+                                fontSize: 18,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                  ),
-                );
-              },
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        profile.name,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isSelected ? colorScheme.primary : null,
+                          fontWeight: isSelected ? FontWeight.bold : null,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             );
           },
         );

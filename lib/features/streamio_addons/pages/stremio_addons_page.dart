@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 import '../../settings/widget/setting_wrapper.dart';
-import '../models/stremio_base_types.dart';
 import '../service/stremio_addon_service.dart';
 import '../widget/add_addon_sheet.dart';
 import '../widget/stremio_addons_list.dart';

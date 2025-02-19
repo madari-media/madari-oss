@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 class StremioVideoList extends StatelessWidget {
   final List<Video>? videos;

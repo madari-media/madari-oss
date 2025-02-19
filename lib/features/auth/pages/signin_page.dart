@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -17,6 +17,7 @@ class SignInPage extends StatefulWidget {
 
 class _SignInPageState extends State<SignInPage>
     with SingleTickerProviderStateMixin {
+  final _logger = Logger("SignInPage");
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -195,18 +196,7 @@ class _SignInPageState extends State<SignInPage>
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      body: RawKeyboardListener(
-        focusNode: FocusNode(),
-        onKey: (RawKeyEvent event) {
-          if (event is RawKeyDownEvent) {
-            if (event.logicalKey == LogicalKeyboardKey.select) {
-              // Handle select button press based on current focus
-              if (_signInButtonFocusNode.hasFocus) {
-                _signIn();
-              }
-            }
-          }
-        },
+      body: SafeArea(
         child: Stack(
           children: [
             Positioned(
@@ -461,7 +451,12 @@ class _SignInPageState extends State<SignInPage>
       if (mounted) {
         context.go('/profile');
       }
-    } on ClientException catch (e) {
+    } on ClientException catch (e, stack) {
+      _logger.warning(
+        "Failed to login",
+        e,
+        stack,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

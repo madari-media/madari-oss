@@ -6,13 +6,14 @@ import 'package:madari_client/features/video_player/container/native.dart';
 import 'package:madari_client/features/video_player/container/state/video_settings.dart';
 import 'package:madari_client/features/video_player/container/video_desktop.dart';
 import 'package:madari_client/features/video_player/container/video_mobile.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/src/subjects/behavior_subject.dart';
 import 'package:universal_platform/universal_platform.dart';
+import 'package:window_manager/window_manager.dart';
 
-import '../../streamio_addons/models/stremio_base_types.dart';
 import '../service/video_eventer_default_track.dart';
 
 typedef OnVideoChangeCallback = Future<bool> Function(
@@ -130,6 +131,12 @@ class _VideoPlayState extends State<VideoPlay> {
     _settings.removeListener(_onSettingsChanged);
     setter.dispose();
     player.dispose();
+
+    if (UniversalPlatform.isDesktop) {
+      windowManager.setAlwaysOnTop(false);
+      windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      windowManager.setVisibleOnAllWorkspaces(false);
+    }
   }
 
   late int selectedVideo = widget.index;

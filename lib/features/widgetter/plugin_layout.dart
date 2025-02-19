@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:cached_query/cached_query.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/features/widgetter/plugin_base.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/catalog_featured_shimmer.dart';
@@ -32,16 +33,24 @@ class LayoutManagerState extends State<LayoutManager> {
   List<HomeLayoutModel> _layouts = [];
   List<HomeLayoutModel> _filteredLayouts = [];
   bool _isLoading = true;
+  final profileService = AppPocketBaseService.instance.engine.profileService;
+
+  late StreamSubscription<bool> _listener;
 
   @override
   void initState() {
     super.initState();
     _loadLayouts();
+
+    _listener = profileService.onProfileUpdate.listen((_) {
+      refresh();
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _listener.cancel();
     super.dispose();
   }
 
@@ -65,9 +74,10 @@ class LayoutManagerState extends State<LayoutManager> {
   }) async {
     try {
       _logger.info('Loading layouts');
+      print((await profileService.getCurrentProfile())!.id);
       final query = Query(
         key:
-            "home_layout_${SelectedProfileService.instance.selectedProfileId}${widget.hasSearch}",
+            "home_layout_${(await profileService.getCurrentProfile())!.id}${widget.hasSearch}",
         config: QueryConfig(
           ignoreCacheDuration: refresh,
           cacheDuration: const Duration(hours: 8),
@@ -79,7 +89,7 @@ class LayoutManagerState extends State<LayoutManager> {
               .getFullList(
                 sort: 'order',
                 filter:
-                    "profiles = '${SelectedProfileService.instance.selectedProfileId}'",
+                    "profiles = '${(await profileService.getCurrentProfile())!.id}'",
               );
         },
       );

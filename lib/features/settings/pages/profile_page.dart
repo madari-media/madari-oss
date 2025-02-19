@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../widget/language_selector.dart';
@@ -108,10 +107,6 @@ class _ProfilePageState extends State<ProfilePage> {
               .update(user.id, body: data);
         }
 
-        SelectedProfileService.instance.setSelectedProfile(
-          SelectedProfileService.instance.selectedProfileId,
-        );
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully')),
@@ -169,8 +164,10 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           filled: true,
-          fillColor:
-              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withOpacity(0.3),
           hoverColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
           focusColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.12),
         ),

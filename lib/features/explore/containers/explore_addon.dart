@@ -3,9 +3,9 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
 import 'package:madari_client/utils/array-extension.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 import '../../widgetter/plugins/stremio/widgets/catalog_grid_full.dart';
 import '../../widgetter/plugins/stremio/widgets/error_card.dart';

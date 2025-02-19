@@ -1,6 +1,5 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:rxdart/subjects.dart';
 
@@ -12,6 +11,7 @@ final _logger = Logger('HomeLayoutService');
 class HomeLayoutService {
   static final HomeLayoutService instance = HomeLayoutService._internal();
   HomeLayoutService._internal();
+  final profileService = AppPocketBaseService.instance.engine.profileService;
 
   final BehaviorSubject refreshWidgets = BehaviorSubject();
 
@@ -23,7 +23,7 @@ class HomeLayoutService {
           .getFullList(
             sort: 'order',
             filter:
-                'profiles = \'${SelectedProfileService.instance.selectedProfileId}\'',
+                'profiles = \'${(await profileService.getCurrentProfile())!.id}\'',
           );
 
       return records
@@ -36,10 +36,6 @@ class HomeLayoutService {
   }
 
   void clearCache() {
-    SelectedProfileService.instance.setSelectedProfile(
-      SelectedProfileService.instance.selectedProfileId,
-    );
-
     CachedQuery.instance.invalidateCache(filterFn: (item, key) {
       return key.startsWith("home_layout");
     });
@@ -49,7 +45,7 @@ class HomeLayoutService {
     try {
       _logger.info('Saving layout widget: ${widget.pluginId}');
       await AppPocketBaseService.instance.pb.collection('home_layout').create(
-            body: widget.toJson(),
+            body: await widget.toJson(),
           );
       clearCache();
       return true;
@@ -148,14 +144,16 @@ class LayoutWidgetConfig {
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Future<Map<String, dynamic>> toJson() async {
     return {
       'title': title,
       'config': config,
       'order': order,
       'plugin_id': pluginId,
       'type': widgetType,
-      'profiles': SelectedProfileService.instance.selectedProfileId,
+      'profiles': (await AppPocketBaseService.instance.engine.profileService
+              .getCurrentProfile())!
+          .id,
       'user': AppPocketBaseService.instance.pb.authStore.record!.id,
     };
   }

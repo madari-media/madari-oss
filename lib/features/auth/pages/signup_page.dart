@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/consts/data.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -468,10 +467,10 @@ class _SignUpPageState extends State<SignUpPage>
 
       await pocketbase.collection('users').create(body: userData);
 
-      await pocketbase.collection('users').authWithPassword(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      await AppPocketBaseService.instance.engine.authService.signInWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
       final profile = await pocketbase.collection('account_profile').create(
         body: {
@@ -481,7 +480,8 @@ class _SignUpPageState extends State<SignUpPage>
         },
       );
 
-      await SelectedProfileService.instance.setSelectedProfile(profile.id);
+      await AppPocketBaseService.instance.engine.profileService
+          .setCurrentProfile(profile.id);
 
       for (final defaultAddon in defaultAppAddons) {
         final manifest = await StremioAddonService.instance

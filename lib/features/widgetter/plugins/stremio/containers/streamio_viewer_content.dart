@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_background.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_cast_section.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_trailer_section.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_video_list.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 final _logger = Logger('StreamioViewerContent');
 

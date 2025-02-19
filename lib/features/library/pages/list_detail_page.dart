@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_client/features/pocketbase/service/pocketbase.service.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/utils/size.dart';
+import 'package:madari_engine/madari_engine.dart';
 
-import '../service/list_service.dart';
 import '../service/trakt_service.dart';
-import '../types/library_types.dart';
 
 class ListDetailsPage extends StatefulWidget {
   final ListModel list;
@@ -35,7 +35,8 @@ class _ListDetailsPageState extends State<ListDetailsPage> {
   Future<void> _loadItems() async {
     try {
       setState(() => _isLoading = true);
-      final items = await ListsService.instance.getListItems(widget.list.id);
+      final items = await AppPocketBaseService.instance.engine.listService
+          .getListItems(widget.list.id);
       setState(() {
         _items = items;
         _isLoading = false;
@@ -64,7 +65,8 @@ class _ListDetailsPageState extends State<ListDetailsPage> {
 
   Future<void> _removeItem(ListItemModel item) async {
     try {
-      await ListsService.instance.removeListItem(widget.list.id, item.id);
+      await AppPocketBaseService.instance.engine.listService
+          .removeListItem(widget.list.id, item.id);
       _loadItems();
     } catch (e) {
       _logger.severe('Error removing list item', e);

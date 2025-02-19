@@ -2,8 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import '../../../../streamio_addons/models/stremio_base_types.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 typedef ImageCallback = Function(String? image);
 

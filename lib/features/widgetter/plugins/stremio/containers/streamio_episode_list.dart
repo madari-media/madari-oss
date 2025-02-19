@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 final _logger = Logger('StreamioEpisodeList');
 

@@ -2,8 +2,8 @@ import 'package:cached_query/cached_query.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/home/pages/home_page.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/utils/size.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../../widgetter/plugin_base.dart';
@@ -31,24 +31,34 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
   final double _minCellWidth = 150;
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  final appProfile = AppPocketBaseService.instance.engine.profileService;
 
-  final query = Query(
-    key: "home_layout",
-    queryFn: () async {
-      return await AppPocketBaseService.instance.pb
-          .collection('home_layout')
-          .getFullList(
-            sort: 'order',
-            filter:
-                'profiles = \'${SelectedProfileService.instance.selectedProfileId}\'',
-          );
-    },
-  );
+  Query<List<RecordModel>>? query;
 
   @override
   void initState() {
     super.initState();
     _logger.info('Initializing LayoutPage');
+
+    (() async {
+      final query = await AppPocketBaseService.instance.engine.profileService
+          .getCurrentProfile();
+
+      this.query = Query(
+        key: "home_layout${query!.id}",
+        queryFn: () async {
+          return await AppPocketBaseService.instance.pb
+              .collection('home_layout')
+              .getFullList(
+                sort: 'order',
+                filter:
+                    'profiles = \'${(await appProfile.getCurrentProfile())!.id}\'',
+              );
+        },
+      );
+
+      setState(() {});
+    })();
 
     loadData();
   }
@@ -135,7 +145,7 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
         newWidget,
       );
 
-      query.refetch();
+      query?.refetch();
 
       if (success) {
         await loadData();
@@ -159,7 +169,7 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
           layoutWidgets.remove(widget);
         });
         await HomeLayoutService.instance.updateLayoutOrder(layoutWidgets);
-        query.refetch();
+        query?.refetch();
         _showSuccess('Removed widget successfully');
       } else {
         _showError('Failed to remove widget. Please try again.');
@@ -195,7 +205,7 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
         final success =
             await HomeLayoutService.instance.saveLayoutWidget(newWidget);
 
-        query.refetch();
+        query?.refetch();
         if (success) {
           successCount++;
         }
@@ -229,7 +239,7 @@ class _LayoutPageState extends State<LayoutPage> with TickerProviderStateMixin {
 
       final success =
           await HomeLayoutService.instance.updateLayoutOrder(layoutWidgets);
-      query.refetch();
+      query?.refetch();
       if (!success) {
         _showError('Failed to save new order. Please try again.');
       }

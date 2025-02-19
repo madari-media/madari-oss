@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:madari_client/features/video_player/container/options/settings_sheet.dart';
 import 'package:madari_client/features/video_player/container/state/video_settings.dart';
 import 'package:madari_client/features/video_player/container/video_play.dart';
+import 'package:madari_engine/madari_engine.dart' as types;
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/src/subjects/behavior_subject.dart';
 
-import '../../streamio_addons/models/stremio_base_types.dart' as types;
 import '../widgets/video_selector.dart';
 import 'options/audio_track_selector.dart';
 import 'options/scale_option.dart';

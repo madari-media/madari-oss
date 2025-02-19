@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:madari_client/features/settings/model/playback_settings_model.dart';
 import 'package:madari_client/features/settings/service/playback_setting_service.dart';
-import 'package:madari_client/features/streamio_addons/models/stremio_base_types.dart';
 import 'package:madari_client/features/video_player/container/video_play.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/containers/streamio_background.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:rxdart/rxdart.dart';
 
 class VideoPlayer extends StatefulWidget {

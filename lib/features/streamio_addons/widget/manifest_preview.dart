@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../models/stremio_base_types.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 class ManifestPreview extends StatelessWidget {
   final StremioManifest manifest;

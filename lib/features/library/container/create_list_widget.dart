@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
-import '../service/list_service.dart';
 import '../service/trakt_service.dart';
-import '../types/library_types.dart';
 
 class CreateListPage extends StatefulWidget {
   const CreateListPage({super.key});
@@ -57,7 +56,8 @@ class _CreateListPageState extends State<CreateListPage> {
         name: _nameController.text,
         description: _descriptionController.text,
       );
-      await ListsService.instance.createList(request);
+      await AppPocketBaseService.instance.engine.listService
+          .createList(request);
       if (mounted) {
         context.pop(true);
       }

@@ -1,0 +1,19 @@
+syntax = "proto3";
+package torrent;
+
+// [RUST-SIGNAL]
+message ServerEngine {
+  ServerStatus status = 1;
+  int32 port = 2;
+}
+
+// [DART-SIGNAL]
+message ServerAction {
+  ServerStatus status = 1;
+  string path = 2;
+}
+
+enum ServerStatus {
+  Active = 0;
+  Stop = 1;
+}

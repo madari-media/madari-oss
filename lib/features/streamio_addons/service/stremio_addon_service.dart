@@ -6,11 +6,11 @@ import 'package:logging/logging.dart';
 import 'package:madari_client/data/db.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/utils/array-extension.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../../widgetter/plugins/stremio/models/cast_info.dart';
-import '../models/stremio_base_types.dart';
 
 typedef OnStreamCallback = void Function(
   List<VideoStream>? items,
@@ -22,6 +22,7 @@ class StremioAddonService {
   final _logger = Logger('StremioAddonService');
 
   static final StremioAddonService instance = StremioAddonService._internal();
+
   final _manifestQueryConfig = QueryConfig(
     cacheDuration: const Duration(hours: 8),
   );
@@ -585,14 +586,4 @@ class StremioAddonService {
 enum ConnectionFilterType {
   text,
   options,
-}
-
-class ConnectionFilterItem {
-  final String title;
-  final dynamic value;
-
-  ConnectionFilterItem({
-    required this.title,
-    required this.value,
-  });
 }

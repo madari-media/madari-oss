@@ -7,7 +7,6 @@ import 'package:pocketbase/pocketbase.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
 import '../service/account_profile_service.dart';
-import '../service/selected_profile.dart';
 import '../widget/profile_dialog.dart';
 
 class SubprofilesPage extends StatefulWidget {
@@ -20,29 +19,32 @@ class SubprofilesPage extends StatefulWidget {
 class _SubprofilesPageState extends State<SubprofilesPage> {
   final _logger = Logger('SubprofilesPage');
   final _profileService = AccountProfileService.instance;
-  final _selectedProfileService = SelectedProfileService.instance;
+  final _selectedProfileService =
+      AppPocketBaseService.instance.engine.profileService;
   List<RecordModel> _profiles = [];
   bool _isLoading = true;
   String? _error;
   Timer? _retryTimer;
   int _retryAttempts = 0;
   static const int _maxRetryAttempts = 3;
-
-  late final StreamSubscription<String?> _selectedProfileSubscription;
+  String? selectedProfile;
+  late StreamSubscription<bool> _listener;
 
   @override
   void initState() {
     super.initState();
-    _selectedProfileSubscription = _selectedProfileService.selectedProfileStream
-        .listen((_) => setState(() {}));
     _loadProfiles();
+
+    _listener = _selectedProfileService.onProfileUpdate.listen((item) async {
+      selectedProfile = (await _selectedProfileService.getCurrentProfile())!.id;
+    });
   }
 
   @override
   void dispose() {
-    _selectedProfileSubscription.cancel();
     _retryTimer?.cancel();
     super.dispose();
+    _listener.cancel();
   }
 
   Future<void> _loadProfiles({bool isRetry = false}) async {
@@ -55,10 +57,6 @@ class _SubprofilesPageState extends State<SubprofilesPage> {
       });
 
       final profiles = await _profileService.getProfiles();
-
-      _selectedProfileService.setSelectedProfile(
-        _selectedProfileService.selectedProfileId,
-      );
 
       if (!mounted) return;
 
@@ -113,10 +111,11 @@ class _SubprofilesPageState extends State<SubprofilesPage> {
 
   Future<void> _handleProfileSelection(RecordModel profile) async {
     try {
-      final currentSelectedId = _selectedProfileService.selectedProfileId;
+      final currentSelectedId =
+          (await _selectedProfileService.getCurrentProfile())!.id;
       final newSelectedId =
           currentSelectedId == profile.id ? profile.id : profile.id;
-      await _selectedProfileService.setSelectedProfile(newSelectedId);
+      await _selectedProfileService.setCurrentProfile(newSelectedId);
 
       if (!mounted) return;
     } catch (e, stackTrace) {
@@ -200,7 +199,6 @@ class _SubprofilesPageState extends State<SubprofilesPage> {
   Widget _buildProfileCard(RecordModel profile) {
     return ProfileCard(
       profile: profile,
-      selectedProfileId: _selectedProfileService.selectedProfileId,
       onTap: () => _handleProfileSelection(profile),
       onEdit: () => _showProfileDialog(context, profile: profile),
       onDelete: () => _showDeleteDialog(profile),

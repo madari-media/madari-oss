@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:madari_client/features/downloads/pages/downloads_page.dart';
 import 'package:madari_client/features/offline_ratings/pages/offline_ratings.dart';
 import 'package:madari_client/features/settings/pages/profile_page.dart';
+import 'package:madari_engine/madari_engine.dart';
 
 import '../features/accounts/pages/external_account.dart';
 import '../features/auth/pages/forget_password_page.dart';
@@ -14,7 +15,6 @@ import '../features/layout/widgets/scaffold_with_nav.dart';
 import '../features/library/container/create_list_widget.dart';
 import '../features/library/pages/library.page.dart';
 import '../features/library/pages/list_detail_page.dart';
-import '../features/library/types/library_types.dart';
 import '../features/pocketbase/service/pocketbase.service.dart';
 import '../features/settings/pages/appearance_page.dart';
 import '../features/settings/pages/change_password_page.dart';
@@ -27,7 +27,6 @@ import '../features/settings/pages/subprofiles_page.dart';
 import '../features/streamio_addons/pages/stremio_addons_page.dart';
 import '../features/video_player/container/video_player.dart';
 import '../features/widgetter/plugins/stremio/pages/streamio_item_viewer.dart';
-import '../features/zeku/pages/integration_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<StatefulNavigationShellState> _shellNavigatorKey =
@@ -46,7 +45,7 @@ final GlobalKey<NavigatorState> _exploreNavigatorKey =
 GoRouter createRouterDesktop() {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/profile',
     refreshListenable: ValueNotifier(
       AppPocketBaseService.instance.pb.authStore.onChange,
     ),
@@ -82,10 +81,6 @@ GoRouter createRouterDesktop() {
       GoRoute(
         path: "/downloads",
         builder: (context, state) => const DownloadsPage(),
-      ),
-      GoRoute(
-        path: "/settings/integration",
-        builder: (context, state) => const IntegrationPage(),
       ),
       StatefulShellRoute.indexedStack(
         key: _shellNavigatorKey,

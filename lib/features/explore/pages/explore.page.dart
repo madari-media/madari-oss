@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:madari_client/features/streamio_addons/extension/query_extension.dart';
 import 'package:madari_client/features/streamio_addons/service/stremio_addon_service.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/error_card.dart';
+import 'package:madari_engine/madari_engine.dart';
 
-import '../../streamio_addons/models/stremio_base_types.dart';
 import '../containers/explore_addon.dart';
 
 class ExplorePage extends StatefulWidget {

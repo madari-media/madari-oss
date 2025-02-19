@@ -2,7 +2,6 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:cached_storage/cached_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:madari_client/features/settings/service/selected_profile.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:universal_platform/universal_platform.dart';
 import 'package:window_manager/window_manager.dart';
@@ -19,7 +18,6 @@ Future startupApp() async {
 
   await AppPocketBaseService.ensureInitialized();
   await AppTheme().ensureInitialized();
-  await SelectedProfileService.instance.initialize();
 
   final pb = AppPocketBaseService.instance.pb;
   final userCollection = pb.collection("users");

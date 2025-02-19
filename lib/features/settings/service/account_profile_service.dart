@@ -10,6 +10,7 @@ class AccountProfileService {
   static final AccountProfileService instance =
       AccountProfileService._internal();
   final _logger = Logger('AccountProfileService');
+  final profileService = AppPocketBaseService.instance.engine.profileService;
 
   AccountProfileService._internal();
 

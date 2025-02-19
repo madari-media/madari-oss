@@ -11,10 +11,9 @@ import 'package:madari_client/features/widgetter/plugin_base.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/catalog_featured.dart';
 import 'package:madari_client/features/widgetter/plugins/stremio/widgets/stremio_card.dart';
 import 'package:madari_client/utils/array-extension.dart';
+import 'package:madari_engine/madari_engine.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 
-import '../../../../streamio_addons/models/stremio_base_types.dart';
 import '../../../../streamio_addons/service/stremio_addon_service.dart';
 import '../../../interface/widgets.dart';
 import '../../../service/home_layout_service.dart';
@@ -137,31 +136,9 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
   Widget _buildShimmerCard(BuildContext context, StremioCardSize cardSize) {
     final theme = Theme.of(context);
 
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      child: Shimmer.fromColors(
-        baseColor: theme.brightness == Brightness.light
-            ? Colors.grey[300]!
-            : Colors.grey[800]!,
-        highlightColor: theme.brightness == Brightness.light
-            ? Colors.grey[100]!
-            : Colors.grey[700]!,
-        child: Container(
-          width: cardSize.width,
-          height: cardSize.height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.red,
-            boxShadow: [
-              BoxShadow(
-                color: theme.shadowColor.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return PulseLoadingCard(
+      width: cardSize.width,
+      height: cardSize.height,
     );
   }
 
@@ -506,5 +483,80 @@ class _CatalogGridState extends State<CatalogGrid> implements Refreshable {
   @override
   Future refresh() async {
     return _query.refetch();
+  }
+}
+
+class PulseLoadingCard extends StatefulWidget {
+  final double width;
+  final double height;
+
+  const PulseLoadingCard({
+    super.key,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  State<PulseLoadingCard> createState() => _PulseLoadingCardState();
+}
+
+class _PulseLoadingCardState extends State<PulseLoadingCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final baseColor = theme.brightness == Brightness.light
+        ? Colors.grey[300]!
+        : Colors.grey[800]!;
+
+    return Container(
+      margin: const EdgeInsets.only(right: 12),
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: baseColor.withOpacity(_animation.value),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.shadowColor.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }

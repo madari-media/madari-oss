@@ -5,8 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 import '../../pocketbase/service/pocketbase.service.dart';
-import '../types/library_types.dart';
-import 'list_service.dart';
+import '../../widgetter/plugins/stremio/models/cast_info.dart';
 
 final _logger = Logger('TraktService');
 
@@ -142,7 +141,7 @@ class TraktService {
       final items = await getListItems(listId);
 
       for (final item in items) {
-        await ListsService.instance.addListItem(
+        await AppPocketBaseService.instance.engine.listService.addListItem(
           listId,
           ListItemModel(
             id: '',
