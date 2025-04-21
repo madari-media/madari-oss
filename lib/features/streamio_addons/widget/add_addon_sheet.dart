@@ -25,8 +25,6 @@ class _AddAddonSheetState extends State<AddAddonSheet> {
 
   final _exampleAddons = {
     "Madari Catalog": "https://catalog.madari.media/manifest.json",
-    "Watchhub": "https://watchhub.strem.io/manifest.json",
-    "Subtitles": "https://opensubtitles-v3.strem.io/manifest.json",
   };
 
   @override
